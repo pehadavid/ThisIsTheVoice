@@ -1,24 +1,53 @@
-# Builds, tests and validates the plugin on Linux, macOS and Windows, and packages an
-# installer for each. On a version tag (v1.2.3) it also drafts a GitHub release with
-# the three installers attached; publish it from the Releases page after a look.
+# Builds, tests and validates the plugin on Linux, macOS and Windows, and packages the
+# installers. Then, depending on the branch:
+#   push to dev    replaces the "Development build" pre-release (tag dev-build), files
+#                  named <version>-dev.<run number>
+#   push to main   publishes release v<version> (version from CMakeLists.txt), unless
+#                  it already exists; versions below 1.0 are marked as pre-releases
+#   pull request   build, tests and validators only
 name: Build
 
 on:
   push:
-    branches: [main]
-    tags: ["v*"]
+    branches: [main, dev]
   pull_request:
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel a run on main: it may be publishing a release.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   GH_TOKEN: ${{ github.token }}
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      label: ${{ steps.v.outputs.label }}
+      channel: ${{ steps.v.outputs.channel }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          version="$(sed -n 's/^project(ThisIsTheVoice VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
+          channel=none
+          label="$version"
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF" = refs/heads/dev ]; then
+            channel=dev
+            label="$version-dev.$GITHUB_RUN_NUMBER"
+          elif [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF" = refs/heads/main ]; then
+            channel=main
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "label=$label" >> "$GITHUB_OUTPUT"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "Version $version, files $label, channel $channel"
+
   linux:
+    needs: version
     # The oldest supported runner, so the binaries run on older distributions (glibc 2.35).
     runs-on: ubuntu-22.04
     steps:
@@ -46,6 +75,8 @@ jobs:
         run: scripts/ci/vst3-validator.sh build/release
 
       - name: Package
+        env:
+          TITV_PACKAGE_VERSION: ${{ needs.version.outputs.label }}
         run: scripts/package-linux.sh build/release
 
       - uses: actions/upload-artifact@v4
@@ -55,6 +86,7 @@ jobs:
           if-no-files-found: error
 
   macos:
+    needs: version
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -76,6 +108,8 @@ jobs:
         run: scripts/ci/validate.sh build/macos
 
       - name: Package
+        env:
+          TITV_PACKAGE_VERSION: ${{ needs.version.outputs.label }}
         run: scripts/package-macos.sh build/macos
 
       - name: Install from the zip as a user would, then auval
@@ -104,6 +138,7 @@ jobs:
           if-no-files-found: error
 
   windows:
+    needs: version
     runs-on: windows-2022
     defaults:
       run:
@@ -131,9 +166,8 @@ jobs:
       - name: Package
         run: |
           choco install innosetup -y --no-progress
-          version="$(sed -n 's/^project(ThisIsTheVoice VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
           # MSYS2_ARG_CONV_EXCL: keep Git Bash from turning the /D options into paths.
-          MSYS2_ARG_CONV_EXCL='*' "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" "/DAppVersion=$version" \
+          MSYS2_ARG_CONV_EXCL='*' "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" "/DAppVersion=${{ needs.version.outputs.label }}" \
             "/DBuildDir=$(cygpath -w "$PWD/build/release")" packaging/windows/ThisIsTheVoice.iss
 
       - uses: actions/upload-artifact@v4
@@ -143,11 +177,14 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [linux, macos, windows]
+    if: needs.version.outputs.channel != 'none'
+    needs: [version, linux, macos, windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      LABEL: ${{ needs.version.outputs.label }}
     steps:
       - uses: actions/checkout@v4
 
@@ -157,24 +194,23 @@ jobs:
           pattern: installer-*
           merge-multiple: true
 
-      - name: Draft the release
+      - name: Replace the development build
+        if: needs.version.outputs.channel == 'dev'
         run: |
-          version="$(sed -n 's/^project(ThisIsTheVoice VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match the version in CMakeLists.txt ($version)" >&2
-            exit 1
+          scripts/ci/release-notes.sh "$LABEL" dev > notes.md
+          gh release delete dev-build --cleanup-tag --yes 2> /dev/null || true
+          gh release create dev-build dist/* --target "$GITHUB_SHA" --prerelease \
+            --title "Development build $LABEL" --notes-file notes.md
+
+      - name: Publish the version
+        if: needs.version.outputs.channel == 'main'
+        run: |
+          if gh release view "v$VERSION" > /dev/null 2>&1 || git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" > /dev/null; then
+            echo "::notice::v$VERSION is already released; raise the version in CMakeLists.txt to publish a new one."
+            exit 0
           fi
-          {
-            echo "## Downloads"
-            echo
-            echo "| System | File | Installs |"
-            echo "| --- | --- | --- |"
-            echo "| Linux x86_64 | \`ThisIsTheVoice-$version-linux-x86_64.tar.gz\` | extract, then \`./install.sh\` (current user) or \`./install.sh --system\` |"
-            echo "| macOS 10.15+ (Intel and Apple Silicon) | \`ThisIsTheVoice-$version-macos.zip\` | extract, then in Terminal: \`bash install.sh\` (CLAP, VST3 and AU for the current user; \`--system\` for every user) |"
-            echo "| macOS, installer alternative | \`ThisIsTheVoice-$version-macos.pkg\` | CLAP, VST3 and AU for every user |"
-            echo "| Windows 10+ x64 | \`ThisIsTheVoice-$version-windows-x64-setup.exe\` | VST3, CLAP and the standalone application |"
-            echo
-            echo "The macOS and Windows files are not signed by an identified developer. On macOS, the zip and its install script need nothing more (the script clears the download quarantine); the .pkg must be allowed in System Settings > Privacy & Security > Open Anyway. On Windows, SmartScreen shows More info, then Run anyway."
-          } > notes.md
-          gh release create "$GITHUB_REF_NAME" dist/* --draft --title "This Is The Voice $version" \
-            --notes-file notes.md --generate-notes
+          scripts/ci/release-notes.sh "$LABEL" > notes.md
+          prerelease=()
+          case "$VERSION" in 0.*) prerelease=(--prerelease) ;; esac
+          gh release create "v$VERSION" dist/* --target "$GITHUB_SHA" "${prerelease[@]}" \
+            --title "This Is The Voice $VERSION" --notes-file notes.md --generate-notes

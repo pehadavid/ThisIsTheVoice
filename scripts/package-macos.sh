@@ -11,6 +11,8 @@
 #   CLAP -> /Library/Audio/Plug-Ins/CLAP
 #
 # Usage: scripts/package-macos.sh [build-dir]   (default: build/macos)
+# TITV_PACKAGE_VERSION overrides the version in the file names and titles
+# (e.g. 0.9.0-dev.42); the package metadata keeps the numeric version.
 #
 # Signing is optional and driven by the environment:
 #   CODESIGN_IDENTITY    "Developer ID Application: ..." for the plugins (default: ad-hoc)
@@ -28,7 +30,8 @@ BUNDLE_ID="io.github.pehadavid.thisisthevoice"
 VERSION="$(sed -n 's/^project(ThisIsTheVoice VERSION \([0-9.]*\).*/\1/p' "$ROOT/CMakeLists.txt")"
 DIST="$ROOT/dist"
 WORK="$DIST/macos-pkg"
-OUTPUT="$DIST/$NAME-$VERSION-macos.pkg"
+LABEL="${TITV_PACKAGE_VERSION:-$VERSION}"
+OUTPUT="$DIST/$NAME-$LABEL-macos.pkg"
 
 [[ -n "$VERSION" ]] || { echo "Could not read the version from CMakeLists.txt" >&2; exit 1; }
 
@@ -86,7 +89,7 @@ cp "$ROOT/LICENSE" "$WORK/LICENSE.txt"
 cat > "$WORK/distribution.xml" <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <installer-gui-script minSpecVersion="2">
-  <title>This Is The Voice $VERSION</title>
+  <title>This Is The Voice $LABEL</title>
   <license file="LICENSE.txt"/>
   <options customize="allow" require-scripts="false" hostArchitectures="x86_64,arm64"/>
   <domains enable_localSystem="true"/>
@@ -107,7 +110,7 @@ if [[ -n "${NOTARY_PROFILE:-}" ]]; then
 fi
 
 # Zip: the signed bundles, the install script and the licence.
-ZIPDIR="$WORK/zip/$NAME-$VERSION-macos"
+ZIPDIR="$WORK/zip/$NAME-$LABEL-macos"
 mkdir -p "$ZIPDIR"
 for entry in "${FORMATS[@]}"; do
   IFS='|' read -r format bundle location title <<< "$entry"
@@ -117,10 +120,10 @@ cp "$ROOT/packaging/macos/install.sh" "$ZIPDIR/install.sh"
 chmod +x "$ZIPDIR/install.sh"
 cp "$ROOT/README.md" "$ROOT/LICENSE" "$ZIPDIR/"
 cp "$ROOT/external/DPF/LICENSE" "$ZIPDIR/LICENSE-DPF"
-ZIP="$DIST/$NAME-$VERSION-macos.zip"
+ZIP="$DIST/$NAME-$LABEL-macos.zip"
 rm -f "$ZIP"
 # ditto keeps bundle structure and signatures (plain zip may not).
-(cd "$WORK/zip" && ditto -c -k --keepParent "$NAME-$VERSION-macos" "$ZIP")
+(cd "$WORK/zip" && ditto -c -k --keepParent "$NAME-$LABEL-macos" "$ZIP")
 
 rm -rf "$WORK"
 echo "$ZIP"
