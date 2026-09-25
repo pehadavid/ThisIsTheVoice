@@ -1,0 +1,8 @@
+# Private notes, never published
+private/
+
+# Builds
+build/
+
+# Release packages
+dist/

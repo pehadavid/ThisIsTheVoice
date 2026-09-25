@@ -1,0 +1,72 @@
+diff --git a/distrho/DistrhoPlugin.hpp b/distrho/DistrhoPlugin.hpp
+index 8570f9e9..b59e794f 100644
+--- a/distrho/DistrhoPlugin.hpp
++++ b/distrho/DistrhoPlugin.hpp
+@@ -374,6 +374,16 @@ protected:
+     */
+     virtual void deactivate() {}
+ 
++#if DISTRHO_PLUGIN_WANT_TAIL
++   /**
++      Length of the tail in samples: how long the plugin keeps producing sound once its input
++      has become silent (reverb, delay feedback...). UINT32_MAX means infinite.
++      Only used by the VST3 format; may be called from any thread.
++      @see DISTRHO_PLUGIN_WANT_TAIL
++    */
++    virtual uint32_t getTailSamples() const { return 0; }
++#endif
++
+ #if DISTRHO_PLUGIN_WANT_MIDI_INPUT
+    /**
+       Run/process function for plugins with MIDI input.
+diff --git a/distrho/src/DistrhoPluginChecks.h b/distrho/src/DistrhoPluginChecks.h
+index 52dc9d76..8e1ca7cd 100644
+--- a/distrho/src/DistrhoPluginChecks.h
++++ b/distrho/src/DistrhoPluginChecks.h
+@@ -65,6 +65,10 @@
+ # define DISTRHO_PLUGIN_WANT_LATENCY 0
+ #endif
+ 
++#ifndef DISTRHO_PLUGIN_WANT_TAIL
++# define DISTRHO_PLUGIN_WANT_TAIL 0
++#endif
++
+ #ifndef DISTRHO_PLUGIN_WANT_MIDI_AS_MPE
+ # define DISTRHO_PLUGIN_WANT_MIDI_AS_MPE 0
+ #endif
+diff --git a/distrho/src/DistrhoPluginInternal.hpp b/distrho/src/DistrhoPluginInternal.hpp
+index d0bef80a..89d5b73d 100644
+--- a/distrho/src/DistrhoPluginInternal.hpp
++++ b/distrho/src/DistrhoPluginInternal.hpp
+@@ -568,6 +568,15 @@ public:
+     }
+ #endif
+ 
++#if DISTRHO_PLUGIN_WANT_TAIL
++    uint32_t getTailSamples() const
++    {
++        DISTRHO_SAFE_ASSERT_RETURN(fPlugin != nullptr, 0);
++
++        return fPlugin->getTailSamples();
++    }
++#endif
++
+ #if DISTRHO_PLUGIN_NUM_INPUTS+DISTRHO_PLUGIN_NUM_OUTPUTS > 0
+     AudioPortWithBusId& getAudioPort(const bool input, const uint32_t index) const noexcept
+     {
+diff --git a/distrho/src/DistrhoPluginVST3.cpp b/distrho/src/DistrhoPluginVST3.cpp
+index 7295c892..8fdc83cf 100644
+--- a/distrho/src/DistrhoPluginVST3.cpp
++++ b/distrho/src/DistrhoPluginVST3.cpp
+@@ -1659,7 +1659,11 @@ public:
+ 
+     uint32_t getTailSamples() const noexcept
+     {
++       #if DISTRHO_PLUGIN_WANT_TAIL
++        return fPlugin.getTailSamples();
++       #else
+         return 0;
++       #endif
+     }
+ 
+     // ----------------------------------------------------------------------------------------------------------------

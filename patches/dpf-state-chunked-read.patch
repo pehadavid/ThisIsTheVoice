@@ -1,0 +1,30 @@
+diff --git a/distrho/src/DistrhoPluginCLAP.cpp b/distrho/src/DistrhoPluginCLAP.cpp
+index 59390921..f2295b01 100644
+--- a/distrho/src/DistrhoPluginCLAP.cpp
++++ b/distrho/src/DistrhoPluginCLAP.cpp
+@@ -1612,7 +1612,9 @@ public:
+                 buffer[read] = orig;
+ 
+                 // if buffer offset points to null, we found the end of a string, lets check
+-                if (buffer[i] == '\0')
++                // (only inside the data just read: past it, the buffer holds stale bytes,
++                // and a string cut by the end of a chunk continues in the next read)
++                if (i < read && buffer[i] == '\0')
+                 {
+                     // special keys
+                     if (key == "__dpf_state_begin__")
+diff --git a/distrho/src/DistrhoPluginVST3.cpp b/distrho/src/DistrhoPluginVST3.cpp
+index 09fcbfea..500b6dd4 100644
+--- a/distrho/src/DistrhoPluginVST3.cpp
++++ b/distrho/src/DistrhoPluginVST3.cpp
+@@ -1002,7 +1002,9 @@ public:
+                 buffer[read] = orig;
+ 
+                 // if buffer offset points to null, we found the end of a string, lets check
+-                if (buffer[i] == '\0')
++                // (only inside the data just read: past it, the buffer holds stale bytes,
++                // and a string cut by the end of a chunk continues in the next read)
++                if (i < read && buffer[i] == '\0')
+                 {
+                     // special keys
+                     if (key == "__dpf_state_begin__")

@@ -1,0 +1,180 @@
+# Builds, tests and validates the plugin on Linux, macOS and Windows, and packages an
+# installer for each. On a version tag (v1.2.3) it also drafts a GitHub release with
+# the three installers attached; publish it from the Releases page after a look.
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  linux:
+    # The oldest supported runner, so the binaries run on older distributions (glibc 2.35).
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libx11-dev libxext-dev libgl-dev libjack-jackd2-dev
+
+      - name: Build
+        run: |
+          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/release
+
+      - name: Tests
+        run: ctest --test-dir build/release --output-on-failure
+
+      - name: clap-validator and pluginval
+        run: scripts/ci/validate.sh build/release
+
+      - name: Steinberg VST3 validator
+        run: scripts/ci/vst3-validator.sh build/release
+
+      - name: Package
+        run: scripts/package-linux.sh build/release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-linux
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Dependencies
+        run: brew install ninja
+
+      - name: Build (universal)
+        run: |
+          cmake -S . -B build/macos -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/macos
+
+      - name: Tests
+        run: ctest --test-dir build/macos --output-on-failure
+
+      - name: clap-validator and pluginval
+        run: scripts/ci/validate.sh build/macos
+
+      - name: Package
+        run: scripts/package-macos.sh build/macos
+
+      - name: Install from the zip as a user would, then auval
+        run: |
+          work="$RUNNER_TEMP/zip-install"
+          mkdir -p "$work"
+          ditto -x -k dist/*-macos.zip "$work"
+          folder="$(ls -d "$work"/ThisIsTheVoice-*-macos)"
+          # What a browser download leaves on every file.
+          xattr -w -r com.apple.quarantine "0081;00000000;Safari;" "$folder"
+          bash "$folder/install.sh"
+          for b in CLAP/ThisIsTheVoice.clap VST3/ThisIsTheVoice.vst3 Components/ThisIsTheVoice.component; do
+            if xattr -r ~/Library/Audio/Plug-Ins/$b | grep -q com.apple.quarantine; then
+              echo "Quarantine flag left on $b" >&2; exit 1
+            fi
+            codesign --verify --deep ~/Library/Audio/Plug-Ins/$b
+          done
+          auval -v aufx TiTV Phdv
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-macos
+          path: |
+            dist/*.pkg
+            dist/*.zip
+          if-no-files-found: error
+
+  windows:
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build
+        run: |
+          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/release
+
+      - name: Tests
+        run: ctest --test-dir build/release --output-on-failure
+
+      - name: clap-validator and pluginval
+        run: scripts/ci/validate.sh build/release
+
+      - name: Package
+        run: |
+          choco install innosetup -y --no-progress
+          version="$(sed -n 's/^project(ThisIsTheVoice VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
+          # MSYS2_ARG_CONV_EXCL: keep Git Bash from turning the /D options into paths.
+          MSYS2_ARG_CONV_EXCL='*' "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" "/DAppVersion=$version" \
+            "/DBuildDir=$(cygpath -w "$PWD/build/release")" packaging/windows/ThisIsTheVoice.iss
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-windows
+          path: dist/*.exe
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, macos, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: installer-*
+          merge-multiple: true
+
+      - name: Draft the release
+        run: |
+          version="$(sed -n 's/^project(ThisIsTheVoice VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match the version in CMakeLists.txt ($version)" >&2
+            exit 1
+          fi
+          {
+            echo "## Downloads"
+            echo
+            echo "| System | File | Installs |"
+            echo "| --- | --- | --- |"
+            echo "| Linux x86_64 | \`ThisIsTheVoice-$version-linux-x86_64.tar.gz\` | extract, then \`./install.sh\` (current user) or \`./install.sh --system\` |"
+            echo "| macOS 10.15+ (Intel and Apple Silicon) | \`ThisIsTheVoice-$version-macos.zip\` | extract, then in Terminal: \`bash install.sh\` (CLAP, VST3 and AU for the current user; \`--system\` for every user) |"
+            echo "| macOS, installer alternative | \`ThisIsTheVoice-$version-macos.pkg\` | CLAP, VST3 and AU for every user |"
+            echo "| Windows 10+ x64 | \`ThisIsTheVoice-$version-windows-x64-setup.exe\` | VST3, CLAP and the standalone application |"
+            echo
+            echo "The macOS and Windows files are not signed by an identified developer. On macOS, the zip and its install script need nothing more (the script clears the download quarantine); the .pkg must be allowed in System Settings > Privacy & Security > Open Anyway. On Windows, SmartScreen shows More info, then Run anyway."
+          } > notes.md
+          gh release create "$GITHUB_REF_NAME" dist/* --draft --title "This Is The Voice $version" \
+            --notes-file notes.md --generate-notes

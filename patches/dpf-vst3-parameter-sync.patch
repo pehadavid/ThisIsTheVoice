@@ -1,0 +1,20 @@
+diff --git a/distrho/src/DistrhoPluginVST3.cpp b/distrho/src/DistrhoPluginVST3.cpp
+index 8fdc83cf..09fcbfea 100644
+--- a/distrho/src/DistrhoPluginVST3.cpp
++++ b/distrho/src/DistrhoPluginVST3.cpp
+@@ -2118,6 +2118,15 @@ public:
+         }
+ 
+         _setNormalizedPluginParameterValue(index, normalized);
++       #elif DISTRHO_PLUGIN_PARAMETERS_THREAD_SAFE
++        // Single component: apply controller-side changes right away, so that the
++        // controller stays in sync (only for plugins whose setParameterValue() may be
++        // called from any thread).
++        const uint32_t index = static_cast<uint32_t>(rindex - kVst3InternalParameterCount);
++        DISTRHO_SAFE_ASSERT_UINT2_RETURN(index < fParameterCount, index, fParameterCount, V3_INVALID_ARG);
++
++        if (!fPlugin.isParameterOutputOrTrigger(index))
++            _setNormalizedPluginParameterValue(index, normalized);
+        #endif
+ 
+         return V3_OK;
