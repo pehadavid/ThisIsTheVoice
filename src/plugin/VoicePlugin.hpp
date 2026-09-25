@@ -17,7 +17,7 @@ public:
 protected:
     const char* getLabel() const override { return "ThisIsTheVoice"; }
     const char* getDescription() const override { return "Vocal chain: level, tone, compression, colour, echo and space."; }
-    const char* getMaker() const override { return "pehadavid"; }
+    const char* getMaker() const override { return "Peha"; }
     const char* getHomePage() const override { return DISTRHO_PLUGIN_URI; }
     const char* getLicense() const override { return "GPL-3.0-or-later"; }
     uint32_t getVersion() const override

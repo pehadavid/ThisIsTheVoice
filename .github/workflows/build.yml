@@ -93,7 +93,7 @@ jobs:
             fi
             codesign --verify --deep ~/Library/Audio/Plug-Ins/$b
           done
-          auval -v aufx TiTV Phdv
+          auval -v aufx TiTV Peha
 
       - uses: actions/upload-artifact@v4
         with:

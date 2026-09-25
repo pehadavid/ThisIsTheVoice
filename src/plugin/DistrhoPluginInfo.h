@@ -3,12 +3,12 @@
 
 // Plugin identity. BRAND_ID, UNIQUE_ID, CLAP_ID and URI identify the plugin in saved
 // projects: they must not change once a version has been published.
-#define DISTRHO_PLUGIN_BRAND    "pehadavid"
+#define DISTRHO_PLUGIN_BRAND    "Peha"
 #define DISTRHO_PLUGIN_NAME     "This Is The Voice"
 #define DISTRHO_PLUGIN_URI      "https://github.com/pehadavid/ThisIsTheVoice"
 #define DISTRHO_PLUGIN_CLAP_ID  "io.github.pehadavid.thisisthevoice"
 
-#define DISTRHO_PLUGIN_BRAND_ID  Phdv
+#define DISTRHO_PLUGIN_BRAND_ID  Peha
 #define DISTRHO_PLUGIN_UNIQUE_ID TiTV
 
 #define DISTRHO_PLUGIN_HAS_UI              1
