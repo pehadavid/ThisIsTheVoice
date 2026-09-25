@@ -4,7 +4,7 @@
 #                  named <version>-dev.<run number>
 #   push to main   publishes the next release: the patch after the latest v* tag, or
 #                  TITV_BASE_VERSION from CMakeLists.txt once it is raised above it
-#                  (scripts/ci/version.sh); versions below 1.0 are pre-releases
+#                  (scripts/ci/version.sh), as a full release marked Latest
 #   pull request   build, tests and validators only
 name: Build
 
@@ -209,7 +209,7 @@ jobs:
         run: |
           scripts/ci/release-notes.sh "$LABEL" dev > notes.md
           gh release delete dev-build --cleanup-tag --yes 2> /dev/null || true
-          gh release create dev-build dist/* --target "$GITHUB_SHA" --prerelease \
+          gh release create dev-build dist/* --target "$GITHUB_SHA" --prerelease --latest=false \
             --title "Development build $LABEL" --notes-file notes.md
 
       - name: Publish the version
@@ -221,7 +221,6 @@ jobs:
             exit 0
           fi
           scripts/ci/release-notes.sh "$LABEL" > notes.md
-          prerelease=()
-          case "$VERSION" in 0.*) prerelease=(--prerelease) ;; esac
-          gh release create "v$VERSION" dist/* --target "$GITHUB_SHA" "${prerelease[@]}" \
+          # A full release, marked Latest: the one the repository page offers.
+          gh release create "v$VERSION" dist/* --target "$GITHUB_SHA" --latest \
             --title "This Is The Voice $VERSION" --notes-file notes.md --generate-notes
