@@ -2,8 +2,9 @@
 # installers. Then, depending on the branch:
 #   push to dev    replaces the "Development build" pre-release (tag dev-build), files
 #                  named <version>-dev.<run number>
-#   push to main   publishes release v<version> (version from CMakeLists.txt), unless
-#                  it already exists; versions below 1.0 are marked as pre-releases
+#   push to main   publishes the next release: the patch after the latest v* tag, or
+#                  TITV_BASE_VERSION from CMakeLists.txt once it is raised above it
+#                  (scripts/ci/version.sh), as a full release marked Latest
 #   pull request   build, tests and validators only
 name: Build
 
@@ -32,7 +33,7 @@ jobs:
       - uses: actions/checkout@v4
       - id: v
         run: |
-          version="$(sed -n 's/^project(ThisIsTheVoice VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
+          version="$(scripts/ci/version.sh)"
           channel=none
           label="$version"
           if [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF" = refs/heads/dev ]; then
@@ -40,6 +41,13 @@ jobs:
             label="$version-dev.$GITHUB_RUN_NUMBER"
           elif [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF" = refs/heads/main ]; then
             channel=main
+            # Already released (a re-run of the same commit): rebuild it, publish nothing.
+            existing="$(git ls-remote --tags origin 'v*' | awk -v sha="$GITHUB_SHA" '$1 == sha { sub("refs/tags/", "", $2); sub("\\^\\{\\}", "", $2); print $2 }' | head -1)"
+            if [ -n "$existing" ]; then
+              version="${existing#v}"
+              label="$version"
+              channel=none
+            fi
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "label=$label" >> "$GITHUB_OUTPUT"
@@ -62,7 +70,7 @@ jobs:
 
       - name: Build
         run: |
-          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DTITV_VERSION=${{ needs.version.outputs.version }}
           cmake --build build/release
 
       - name: Tests
@@ -76,6 +84,7 @@ jobs:
 
       - name: Package
         env:
+          TITV_VERSION: ${{ needs.version.outputs.version }}
           TITV_PACKAGE_VERSION: ${{ needs.version.outputs.label }}
         run: scripts/package-linux.sh build/release
 
@@ -98,7 +107,7 @@ jobs:
 
       - name: Build (universal)
         run: |
-          cmake -S . -B build/macos -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build/macos -G Ninja -DCMAKE_BUILD_TYPE=Release -DTITV_VERSION=${{ needs.version.outputs.version }}
           cmake --build build/macos
 
       - name: Tests
@@ -109,6 +118,7 @@ jobs:
 
       - name: Package
         env:
+          TITV_VERSION: ${{ needs.version.outputs.version }}
           TITV_PACKAGE_VERSION: ${{ needs.version.outputs.label }}
         run: scripts/package-macos.sh build/macos
 
@@ -154,7 +164,7 @@ jobs:
 
       - name: Build
         run: |
-          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DTITV_VERSION=${{ needs.version.outputs.version }}
           cmake --build build/release
 
       - name: Tests
@@ -199,18 +209,18 @@ jobs:
         run: |
           scripts/ci/release-notes.sh "$LABEL" dev > notes.md
           gh release delete dev-build --cleanup-tag --yes 2> /dev/null || true
-          gh release create dev-build dist/* --target "$GITHUB_SHA" --prerelease \
+          gh release create dev-build dist/* --target "$GITHUB_SHA" --prerelease --latest=false \
             --title "Development build $LABEL" --notes-file notes.md
 
       - name: Publish the version
         if: needs.version.outputs.channel == 'main'
         run: |
-          if gh release view "v$VERSION" > /dev/null 2>&1 || git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" > /dev/null; then
-            echo "::notice::v$VERSION is already released; raise the version in CMakeLists.txt to publish a new one."
+          # version.sh always picks an unreleased version; this only guards re-runs.
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            echo "::notice::v$VERSION is already released."
             exit 0
           fi
           scripts/ci/release-notes.sh "$LABEL" > notes.md
-          prerelease=()
-          case "$VERSION" in 0.*) prerelease=(--prerelease) ;; esac
-          gh release create "v$VERSION" dist/* --target "$GITHUB_SHA" "${prerelease[@]}" \
+          # A full release, marked Latest: the one the repository page offers.
+          gh release create "v$VERSION" dist/* --target "$GITHUB_SHA" --latest \
             --title "This Is The Voice $VERSION" --notes-file notes.md --generate-notes

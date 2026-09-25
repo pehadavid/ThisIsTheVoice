@@ -4,7 +4,7 @@
 A complete vocal chain in a single plugin, built for CLAP first.</p>
 
 <p align="center">
-  <a href="https://github.com/pehadavid/ThisIsTheVoice/releases"><b>Download</b></a> ·
+  <a href="https://github.com/pehadavid/ThisIsTheVoice/releases/latest"><b>Download</b></a> ·
   <a href="#build-from-source">Build from source</a> ·
   <a href="LICENSE">Free and open source</a>
 </p>
@@ -64,7 +64,7 @@ CLAP and VST3 on Linux, macOS and Windows, Audio Unit on macOS, LV2 on Linux. In
 
 ## Download
 
-Installers for Linux, macOS and Windows are on the [Releases page](https://github.com/pehadavid/ThisIsTheVoice/releases):
+Installers for Linux, macOS and Windows are attached to the [latest release](https://github.com/pehadavid/ThisIsTheVoice/releases/latest). Development builds from the `dev` branch are on the [Releases page](https://github.com/pehadavid/ThisIsTheVoice/releases) as a pre-release.
 
 - **Linux x86_64:** extract the archive, then run `./install.sh` (current user) or `./install.sh --system` (all users).
 - **macOS 10.15+ (Intel and Apple Silicon):** extract the `-macos.zip`, then in Terminal run `bash install.sh` from the extracted folder. It installs the CLAP, VST3 and AU versions for the current user (`--system` for every user, `--uninstall` to remove them). A `.pkg` installer is also provided.
@@ -134,7 +134,7 @@ third_party/  Khronos OpenGL headers for Windows builds (MIT)
 external/DPF  DISTRHO Plugin Framework (submodule)
 ```
 
-Every push is built, tested and validated on Linux, macOS and Windows (clap-validator, pluginval, Steinberg's VST3 validator, auval) by `.github/workflows/build.yml`, which also packages the three installers. Work happens on the `dev` branch: every push to `dev` replaces the **Development build** pre-release with fresh installers (named `<version>-dev.<build number>`). Releases come from `main`: raise the version in `project(... VERSION ...)` in `CMakeLists.txt`, merge `dev` into `main`, and the workflow publishes release `v<version>` with the installers attached (versions below 1.0 as pre-releases). A merge that keeps an already released version publishes nothing. `scripts/package-linux.sh`, `scripts/package-macos.sh` and `packaging/windows/ThisIsTheVoice.iss` build the same installers by hand.
+Every push is built, tested and validated on Linux, macOS and Windows (clap-validator, pluginval, Steinberg's VST3 validator, auval) by `.github/workflows/build.yml`, which also packages the three installers. Work happens on the `dev` branch: every push to `dev` replaces the **Development build** pre-release with fresh installers, named after the next version (`<next version>-dev.<build number>`). Releases come from `main` and are numbered automatically: each merge of `dev` into `main` publishes the next patch after the latest `v*` tag, with the installers attached, as the latest release. For a new minor or major version, raise `TITV_BASE_VERSION` in `CMakeLists.txt`: the next release starts from it (`scripts/ci/version.sh`). `scripts/package-linux.sh`, `scripts/package-macos.sh` and `packaging/windows/ThisIsTheVoice.iss` build the same installers by hand.
 
 Parameter IDs (their order in `src/engine/Parameters.hpp`) and factory preset ids are frozen: saved projects depend on them, so new entries are only ever appended; tests enforce it.
 

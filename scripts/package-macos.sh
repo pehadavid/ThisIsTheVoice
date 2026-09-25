@@ -11,8 +11,9 @@
 #   CLAP -> /Library/Audio/Plug-Ins/CLAP
 #
 # Usage: scripts/package-macos.sh [build-dir]   (default: build/macos)
+# TITV_VERSION is the version built (default: TITV_BASE_VERSION in CMakeLists.txt);
 # TITV_PACKAGE_VERSION overrides the version in the file names and titles
-# (e.g. 0.9.0-dev.42); the package metadata keeps the numeric version.
+# (e.g. 0.9.1-dev.42); the package metadata keeps the numeric version.
 #
 # Signing is optional and driven by the environment:
 #   CODESIGN_IDENTITY    "Developer ID Application: ..." for the plugins (default: ad-hoc)
@@ -27,7 +28,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="$(cd "${1:-$ROOT/build/macos}" && pwd)"
 NAME="ThisIsTheVoice"
 BUNDLE_ID="io.github.pehadavid.thisisthevoice"
-VERSION="$(sed -n 's/^project(ThisIsTheVoice VERSION \([0-9.]*\).*/\1/p' "$ROOT/CMakeLists.txt")"
+VERSION="${TITV_VERSION:-$(sed -n 's/^set(TITV_BASE_VERSION \([0-9.]*\)).*/\1/p' "$ROOT/CMakeLists.txt")}"
 DIST="$ROOT/dist"
 WORK="$DIST/macos-pkg"
 LABEL="${TITV_PACKAGE_VERSION:-$VERSION}"

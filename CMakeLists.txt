@@ -7,7 +7,18 @@ if(APPLE)
   set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE STRING "macOS architectures")
 endif()
 
-project(ThisIsTheVoice VERSION 0.9.0 LANGUAGES C CXX)
+# Base version: releases start here. CI publishes the next patch after the latest
+# release tag (scripts/ci/version.sh) and passes it in TITV_VERSION; raise the base
+# for a new minor or major version.
+set(TITV_BASE_VERSION 0.9.0)
+set(TITV_VERSION "" CACHE STRING "Version to build (default: TITV_BASE_VERSION)")
+if(TITV_VERSION)
+  set(titv_project_version "${TITV_VERSION}")
+else()
+  set(titv_project_version "${TITV_BASE_VERSION}")
+endif()
+
+project(ThisIsTheVoice VERSION ${titv_project_version} LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
