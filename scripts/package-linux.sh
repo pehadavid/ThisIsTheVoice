@@ -7,14 +7,15 @@
 # README.md and LICENSE.
 #
 # Usage: scripts/package-linux.sh [build-dir]   (default: build/release)
-# TITV_PACKAGE_VERSION overrides the version in the file name (e.g. 0.9.0-dev.42).
+# TITV_VERSION is the version built (default: TITV_BASE_VERSION in CMakeLists.txt);
+# TITV_PACKAGE_VERSION overrides the version in the file name (e.g. 0.9.1-dev.42).
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="$(cd "${1:-$ROOT/build/release}" && pwd)"
 NAME="ThisIsTheVoice"
-VERSION="$(sed -n 's/^project(ThisIsTheVoice VERSION \([0-9.]*\).*/\1/p' "$ROOT/CMakeLists.txt")"
+VERSION="${TITV_VERSION:-$(sed -n 's/^set(TITV_BASE_VERSION \([0-9.]*\)).*/\1/p' "$ROOT/CMakeLists.txt")}"
 ARCH="$(uname -m)"
 PACKAGE="$NAME-${TITV_PACKAGE_VERSION:-$VERSION}-linux-$ARCH"
 DIST="$ROOT/dist"
