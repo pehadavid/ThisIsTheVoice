@@ -134,7 +134,7 @@ third_party/  Khronos OpenGL headers for Windows builds (MIT)
 external/DPF  DISTRHO Plugin Framework (submodule)
 ```
 
-Every push is built, tested and validated on Linux, macOS and Windows (clap-validator, pluginval, Steinberg's VST3 validator, auval) by `.github/workflows/build.yml`, which also packages the three installers. To release, set the version in `project(... VERSION ...)` in `CMakeLists.txt`, then push a matching tag (`git tag v0.2.0 && git push origin v0.2.0`): the workflow drafts a GitHub release with the installers attached, ready to be published. `scripts/package-linux.sh`, `scripts/package-macos.sh` and `packaging/windows/ThisIsTheVoice.iss` build the same installers by hand.
+Every push is built, tested and validated on Linux, macOS and Windows (clap-validator, pluginval, Steinberg's VST3 validator, auval) by `.github/workflows/build.yml`, which also packages the three installers. Work happens on the `dev` branch: every push to `dev` replaces the **Development build** pre-release with fresh installers (named `<version>-dev.<build number>`). Releases come from `main`: raise the version in `project(... VERSION ...)` in `CMakeLists.txt`, merge `dev` into `main`, and the workflow publishes release `v<version>` with the installers attached (versions below 1.0 as pre-releases). A merge that keeps an already released version publishes nothing. `scripts/package-linux.sh`, `scripts/package-macos.sh` and `packaging/windows/ThisIsTheVoice.iss` build the same installers by hand.
 
 Parameter IDs (their order in `src/engine/Parameters.hpp`) and factory preset ids are frozen: saved projects depend on them, so new entries are only ever appended; tests enforce it.
 
