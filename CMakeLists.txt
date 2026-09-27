@@ -12,6 +12,8 @@ endif()
 # for a new minor or major version.
 set(TITV_BASE_VERSION 0.9.0)
 set(TITV_VERSION "" CACHE STRING "Version to build (default: TITV_BASE_VERSION)")
+# Full version shown in the editor, e.g. 0.9.1-dev.42 for a development build.
+set(TITV_VERSION_LABEL "" CACHE STRING "Version shown in the editor (default: the version built)")
 if(TITV_VERSION)
   set(titv_project_version "${TITV_VERSION}")
 else()
@@ -19,6 +21,11 @@ else()
 endif()
 
 project(ThisIsTheVoice VERSION ${titv_project_version} LANGUAGES C CXX)
+if(TITV_VERSION_LABEL)
+  set(titv_version_label "${TITV_VERSION_LABEL}")
+else()
+  set(titv_version_label "${PROJECT_VERSION}")
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -118,17 +125,23 @@ if(TITV_BUILD_PLUGIN)
       src/plugin/VoicePlugin.cpp
     FILES_UI
       src/ui/VoiceUI.cpp
+      src/ui/OpenUrl.cpp
       src/ui/Settings.cpp
       src/ui/UserPresets.cpp
       src/ui/PresetBrowser.cpp)
 
   target_include_directories(ThisIsTheVoice PUBLIC src src/plugin src/ui)
-  # Version reported to hosts, from project(VERSION ...).
+  # Version reported to hosts, from project(VERSION ...), and the full label shown
+  # in the editor.
   target_compile_definitions(ThisIsTheVoice PUBLIC
     TITV_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
     TITV_VERSION_MINOR=${PROJECT_VERSION_MINOR}
-    TITV_VERSION_PATCH=${PROJECT_VERSION_PATCH})
+    TITV_VERSION_PATCH=${PROJECT_VERSION_PATCH}
+    TITV_VERSION_LABEL="${titv_version_label}")
   target_link_libraries(ThisIsTheVoice PUBLIC titv_engine)
+  if(WIN32)
+    target_link_libraries(ThisIsTheVoice PUBLIC shell32) # ShellExecute, for the link in the about panel
+  endif()
 endif()
 
 if(TITV_BUILD_TESTS)

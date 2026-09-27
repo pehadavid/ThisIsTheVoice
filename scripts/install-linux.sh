@@ -76,7 +76,13 @@ if [[ -f "$BUILD_DIR/CMakeCache.txt" ]]; then
 fi
 
 echo "Configuring and building ($BUILD_DIR)..."
-cmake -S "$ROOT" -B "$BUILD_DIR" "${GENERATOR[@]}" -DCMAKE_BUILD_TYPE=Release > /dev/null
+# Same version as the next CI build (base version when the tags cannot be read),
+# labelled as a local build of this commit, e.g. 0.9.1-local.c9dd602-dirty.
+VERSION="$("$ROOT/scripts/ci/version.sh" 2> /dev/null || "$ROOT/scripts/ci/version.sh" "")"
+LABEL="$VERSION-local.$(git -C "$ROOT" describe --always --dirty --exclude='*' 2> /dev/null || echo unknown)"
+
+cmake -S "$ROOT" -B "$BUILD_DIR" "${GENERATOR[@]}" -DCMAKE_BUILD_TYPE=Release \
+      -DTITV_VERSION="$VERSION" -DTITV_VERSION_LABEL="$LABEL" > /dev/null
 cmake --build "$BUILD_DIR" --parallel
 
 if [[ $RUN_TESTS -eq 1 ]]; then
@@ -108,8 +114,7 @@ for f in "${SELECTED[@]}"; do
   echo "Installed $f: $dest$([[ $LINK -eq 1 ]] && echo " -> $src")"
 done
 
-version="$(git -C "$ROOT" describe --always --dirty 2> /dev/null || echo unknown)"
 echo
-echo "This Is The Voice ($version) installed."
+echo "This Is The Voice $LABEL installed."
 echo "In Bitwig Studio: Settings > Locations > Plug-ins, keep 'Use Bitwig default locations' on"
 echo "(it scans ~/.vst3 and ~/.clap), then rescan or restart Bitwig if the plugin is already loaded."
