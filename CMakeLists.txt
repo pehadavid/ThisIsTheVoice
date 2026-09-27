@@ -59,25 +59,36 @@ if(TITV_BUILD_PLUGIN)
   if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/DPF/CMakeLists.txt")
     message(FATAL_ERROR "DPF is missing: run `git submodule update --init --recursive`")
   endif()
-  # Local changes to DPF, kept as patches so the submodule stays upstream DPF.
+  # Local changes to DPF and its pugl submodule, kept as patches so the submodules stay
+  # upstream. Each entry is <directory under external/DPF>:<patch file>.
   # dpf-tail.patch: lets the plugin report its tail length to VST3 hosts.
   # dpf-vst3-parameter-sync.patch: applies VST3 controller-side parameter changes at
   #   once in single-component mode, so host and controller stay in sync.
   # dpf-state-chunked-read.patch: fixes the CLAP and VST3 state parsers when the host
   #   delivers the saved state in small chunks.
-  foreach(patch dpf-tail.patch dpf-vst3-parameter-sync.patch dpf-state-chunked-read.patch)
+  # pugl-wgl-format-fallback.patch: falls back to the basic pixel format and context
+  #   when WGL matches no format (Wine on EGL has no window format with alpha bits),
+  #   instead of failing to open the editor.
+  foreach(entry .:dpf-tail.patch
+                .:dpf-vst3-parameter-sync.patch
+                .:dpf-state-chunked-read.patch
+                dgl/src/pugl-upstream:pugl-wgl-format-fallback.patch)
+    string(REPLACE ":" ";" entry "${entry}")
+    list(GET entry 0 patch_dir)
+    list(GET entry 1 patch)
     set(patch_file "${CMAKE_CURRENT_SOURCE_DIR}/patches/${patch}")
+    set(patch_root "${CMAKE_CURRENT_SOURCE_DIR}/external/DPF/${patch_dir}")
     execute_process(COMMAND git apply --reverse --check "${patch_file}"
-                    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/external/DPF"
+                    WORKING_DIRECTORY "${patch_root}"
                     RESULT_VARIABLE already_applied OUTPUT_QUIET ERROR_QUIET)
     if(NOT already_applied EQUAL 0)
       execute_process(COMMAND git apply "${patch_file}"
-                      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/external/DPF"
+                      WORKING_DIRECTORY "${patch_root}"
                       RESULT_VARIABLE apply_result)
       if(NOT apply_result EQUAL 0)
-        message(FATAL_ERROR "Could not apply patches/${patch} to external/DPF")
+        message(FATAL_ERROR "Could not apply patches/${patch} to external/DPF/${patch_dir}")
       endif()
-      message(STATUS "Applied patches/${patch} to DPF")
+      message(STATUS "Applied patches/${patch} to external/DPF/${patch_dir}")
     endif()
   endforeach()
 
