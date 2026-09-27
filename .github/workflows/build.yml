@@ -6,12 +6,29 @@
 #                  TITV_BASE_VERSION from CMakeLists.txt once it is raised above it
 #                  (scripts/ci/version.sh), as a full release marked Latest
 #   pull request   build, tests and validators only
+# A push or pull request that only touches documentation (README, LICENSE, assets/)
+# or CI files (.github/) runs nothing: no build, no pre-release, no new version. The
+# next code change ships them with the installers. Run the workflow by hand (Actions >
+# Build > Run workflow) to test a CI change: a manual run builds and validates, but
+# never publishes.
 name: Build
 
 on:
   push:
     branches: [main, dev]
+    paths-ignore:
+      - README.md
+      - LICENSE
+      - assets/**
+      - .gitignore
+      - .github/**
   pull_request:
+    paths-ignore:
+      - README.md
+      - LICENSE
+      - assets/**
+      - .gitignore
+      - .github/**
   workflow_dispatch:
 
 concurrency:
