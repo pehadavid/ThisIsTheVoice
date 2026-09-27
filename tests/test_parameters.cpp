@@ -46,6 +46,41 @@ TEST(registry_entries_are_consistent)
     CHECK(info(Param::EchoNote).max == static_cast<float>(kNoteDivisionCount - 1));
 }
 
+TEST(display_order_is_a_permutation)
+{
+    std::set<uint32_t> seen;
+    for (Param p : kDisplayOrder) {
+        CHECK(index(p) < kParamCount);
+        CHECK(seen.insert(index(p)).second);
+    }
+    CHECK(seen.size() == kParamCount);
+}
+
+TEST(control_pages_are_valid)
+{
+    CHECK(!kControlPages.empty());
+    std::set<std::string> names;
+    std::set<uint32_t> mapped;
+    for (const ControlPage& page : kControlPages) {
+        CHECK(std::strlen(page.section) > 0);
+        CHECK(names.insert(page.name).second);
+        bool any = false;
+        for (Param p : page.params) {
+            CHECK(p == kNoParam || index(p) < kParamCount);
+            if (p != kNoParam) {
+                any = true;
+                mapped.insert(index(p));
+            }
+        }
+        CHECK(any);
+    }
+    // Every parameter can be reached from a controller.
+    CHECK(mapped.size() == kParamCount);
+    // The first knobs of the listing are the Main page, for controllers that map by eights.
+    for (uint32_t i = 0; i < kControlPageSlots; ++i)
+        CHECK(kDisplayOrder[i] == kControlPages[0].params[i]);
+}
+
 TEST(design_defaults)
 {
     CHECK(info(Param::GlobalBypass).def == 0.0f);

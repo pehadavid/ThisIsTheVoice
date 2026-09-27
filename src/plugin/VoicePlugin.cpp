@@ -88,6 +88,23 @@ void VoicePlugin::initState(uint32_t index, State& state)
     }
 }
 
+uint32_t VoicePlugin::getParameterIndexAtPosition(uint32_t position) const
+{
+    return position < titv::kParamCount ? titv::index(titv::kDisplayOrder[position]) : position;
+}
+
+void VoicePlugin::initRemoteControlsPage(uint32_t index, RemoteControlsPage& page) const
+{
+    if (index >= titv::kControlPages.size())
+        return;
+
+    const titv::ControlPage& cp = titv::kControlPages[index];
+    page.section = cp.section;
+    page.name = cp.name;
+    for (uint32_t i = 0; i < titv::kControlPageSlots && i < RemoteControlsPage::kSlotCount; ++i)
+        page.parameters[i] = cp.params[i] == titv::kNoParam ? -1 : static_cast<int32_t>(titv::index(cp.params[i]));
+}
+
 float VoicePlugin::getParameterValue(uint32_t index) const
 {
     return index < titv::kParamCount ? engine_.parameter(static_cast<titv::Param>(index)) : 0.0f;

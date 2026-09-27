@@ -12,6 +12,8 @@ endif()
 # for a new minor or major version.
 set(TITV_BASE_VERSION 0.9.0)
 set(TITV_VERSION "" CACHE STRING "Version to build (default: TITV_BASE_VERSION)")
+# Full version shown in the editor, e.g. 0.9.1-dev.42 for a development build.
+set(TITV_VERSION_LABEL "" CACHE STRING "Version shown in the editor (default: the version built)")
 if(TITV_VERSION)
   set(titv_project_version "${TITV_VERSION}")
 else()
@@ -19,6 +21,11 @@ else()
 endif()
 
 project(ThisIsTheVoice VERSION ${titv_project_version} LANGUAGES C CXX)
+if(TITV_VERSION_LABEL)
+  set(titv_version_label "${TITV_VERSION_LABEL}")
+else()
+  set(titv_version_label "${PROJECT_VERSION}")
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -59,25 +66,40 @@ if(TITV_BUILD_PLUGIN)
   if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/DPF/CMakeLists.txt")
     message(FATAL_ERROR "DPF is missing: run `git submodule update --init --recursive`")
   endif()
-  # Local changes to DPF, kept as patches so the submodule stays upstream DPF.
+  # Local changes to DPF and its pugl submodule, kept as patches so the submodules stay
+  # upstream. Each entry is <directory under external/DPF>:<patch file>.
   # dpf-tail.patch: lets the plugin report its tail length to VST3 hosts.
   # dpf-vst3-parameter-sync.patch: applies VST3 controller-side parameter changes at
   #   once in single-component mode, so host and controller stay in sync.
   # dpf-state-chunked-read.patch: fixes the CLAP and VST3 state parsers when the host
   #   delivers the saved state in small chunks.
-  foreach(patch dpf-tail.patch dpf-vst3-parameter-sync.patch dpf-state-chunked-read.patch)
+  # dpf-controller-layout.patch: lets the plugin choose the order hosts list its parameters
+  #   in (VST3, CLAP, AU) without changing their IDs, and adds the CLAP remote-controls
+  #   extension (parameter pages for hardware controllers).
+  # pugl-wgl-format-fallback.patch: falls back to the basic pixel format and context
+  #   when WGL matches no format (Wine on EGL has no window format with alpha bits),
+  #   instead of failing to open the editor.
+  foreach(entry .:dpf-tail.patch
+                .:dpf-vst3-parameter-sync.patch
+                .:dpf-state-chunked-read.patch
+                .:dpf-controller-layout.patch
+                dgl/src/pugl-upstream:pugl-wgl-format-fallback.patch)
+    string(REPLACE ":" ";" entry "${entry}")
+    list(GET entry 0 patch_dir)
+    list(GET entry 1 patch)
     set(patch_file "${CMAKE_CURRENT_SOURCE_DIR}/patches/${patch}")
+    set(patch_root "${CMAKE_CURRENT_SOURCE_DIR}/external/DPF/${patch_dir}")
     execute_process(COMMAND git apply --reverse --check "${patch_file}"
-                    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/external/DPF"
+                    WORKING_DIRECTORY "${patch_root}"
                     RESULT_VARIABLE already_applied OUTPUT_QUIET ERROR_QUIET)
     if(NOT already_applied EQUAL 0)
       execute_process(COMMAND git apply "${patch_file}"
-                      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/external/DPF"
+                      WORKING_DIRECTORY "${patch_root}"
                       RESULT_VARIABLE apply_result)
       if(NOT apply_result EQUAL 0)
-        message(FATAL_ERROR "Could not apply patches/${patch} to external/DPF")
+        message(FATAL_ERROR "Could not apply patches/${patch} to external/DPF/${patch_dir}")
       endif()
-      message(STATUS "Applied patches/${patch} to DPF")
+      message(STATUS "Applied patches/${patch} to external/DPF/${patch_dir}")
     endif()
   endforeach()
 
@@ -103,17 +125,23 @@ if(TITV_BUILD_PLUGIN)
       src/plugin/VoicePlugin.cpp
     FILES_UI
       src/ui/VoiceUI.cpp
+      src/ui/OpenUrl.cpp
       src/ui/Settings.cpp
       src/ui/UserPresets.cpp
       src/ui/PresetBrowser.cpp)
 
   target_include_directories(ThisIsTheVoice PUBLIC src src/plugin src/ui)
-  # Version reported to hosts, from project(VERSION ...).
+  # Version reported to hosts, from project(VERSION ...), and the full label shown
+  # in the editor.
   target_compile_definitions(ThisIsTheVoice PUBLIC
     TITV_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
     TITV_VERSION_MINOR=${PROJECT_VERSION_MINOR}
-    TITV_VERSION_PATCH=${PROJECT_VERSION_PATCH})
+    TITV_VERSION_PATCH=${PROJECT_VERSION_PATCH}
+    TITV_VERSION_LABEL="${titv_version_label}")
   target_link_libraries(ThisIsTheVoice PUBLIC titv_engine)
+  if(WIN32)
+    target_link_libraries(ThisIsTheVoice PUBLIC shell32) # ShellExecute, for the link in the about panel
+  endif()
 endif()
 
 if(TITV_BUILD_TESTS)

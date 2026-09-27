@@ -70,7 +70,7 @@ jobs:
 
       - name: Build
         run: |
-          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DTITV_VERSION=${{ needs.version.outputs.version }}
+          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DTITV_VERSION=${{ needs.version.outputs.version }} -DTITV_VERSION_LABEL=${{ needs.version.outputs.label }}
           cmake --build build/release
 
       - name: Tests
@@ -107,7 +107,7 @@ jobs:
 
       - name: Build (universal)
         run: |
-          cmake -S . -B build/macos -G Ninja -DCMAKE_BUILD_TYPE=Release -DTITV_VERSION=${{ needs.version.outputs.version }}
+          cmake -S . -B build/macos -G Ninja -DCMAKE_BUILD_TYPE=Release -DTITV_VERSION=${{ needs.version.outputs.version }} -DTITV_VERSION_LABEL=${{ needs.version.outputs.label }}
           cmake --build build/macos
 
       - name: Tests
@@ -164,7 +164,7 @@ jobs:
 
       - name: Build
         run: |
-          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DTITV_VERSION=${{ needs.version.outputs.version }}
+          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DTITV_VERSION=${{ needs.version.outputs.version }} -DTITV_VERSION_LABEL=${{ needs.version.outputs.label }}
           cmake --build build/release
 
       - name: Tests

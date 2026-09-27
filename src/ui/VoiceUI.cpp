@@ -6,6 +6,7 @@
 // Linux) then never resize the editor at all.
 
 #include "DistrhoUI.hpp"
+#include "OpenUrl.hpp"
 #include "PresetBrowser.hpp"
 #include "Settings.hpp"
 #include "plugin/VoicePlugin.hpp"
@@ -75,9 +76,15 @@ constexpr float kHelpTop = 412.0f;
 // EN | FR switch in the header, right of the title.
 constexpr float kLangX = 226.0f, kLangY = 13.0f, kLangW = 64.0f, kLangH = 24.0f;
 
-// Auto Level buttons, between the input meter and the Input knob.
-constexpr float kAutoX = 26.0f, kAutoY = kSectionTop + 238.0f, kAutoW = 56.0f, kAutoH = 18.0f;
-constexpr float kUndoX = 86.0f, kUndoW = 30.0f;
+// Auto Level buttons, one above the other, centred in the INPUT section (x 16,
+// width 110) and vertically between the bottom of the meter and the top of the
+// Input knob's arc. AUTO alone is centred there; with the undo button, the pair is.
+constexpr float kInputCentreX = 16.0f + 110.0f / 2;
+constexpr float kAutoGapMiddleY = kSectionTop + (212.0f + 260.0f) / 2;
+constexpr float kAutoW = 56.0f, kAutoH = 18.0f, kAutoGap = 4.0f;
+constexpr float kAutoX = kInputCentreX - kAutoW / 2;
+constexpr float kUndoW = 30.0f;
+constexpr float kUndoX = kInputCentreX - kUndoW / 2;
 
 // Gain-reduction bars: full length is 20 dB of reduction.
 constexpr float kReductionRangeDb = 20.0f;
@@ -93,7 +100,14 @@ constexpr int kPresetListMaxRows = 17;
 constexpr float kDeleteZoneW = 70.0f; // right end of a user preset row
 constexpr float kEditButtonW = 28.0f;
 
-enum class Button { None, Language, Auto, Undo, PresetPrevious, PresetNext, PresetName, EditConfirm, EditCancel };
+// About button: a small "?" at the bottom right, on the help line.
+constexpr float kAboutCx = kWidth - 28.0f, kAboutCy = kHelpTop + 18.0f, kAboutR = 10.0f;
+// About panel, drawn over the editor (no separate window: some hosts and Wine handle
+// child windows badly).
+constexpr float kAboutPanelW = 560.0f, kAboutPanelH = 270.0f;
+
+enum class Button { None, Language, Auto, Undo, PresetPrevious, PresetNext, PresetName, EditConfirm, EditCancel,
+                    About };
 
 // One line of the preset list.
 struct PresetRow {
@@ -221,7 +235,9 @@ protected:
         drawDucking();
         drawPresetSelector();
         drawHelp();
+        drawAboutButton();
         drawPresetList(); // on top of everything
+        drawAbout();
         restore();
     }
 
@@ -240,6 +256,15 @@ protected:
         const View v = view();
         const float x = v.toBaseX(ev.pos.getX()), y = v.toBaseY(ev.pos.getY());
 
+        // The about panel: the link opens the repository, any other click closes it.
+        if (aboutOpen_) {
+            if (overLink(x, y))
+                titv::ui::openUrl(DISTRHO_PLUGIN_URI);
+            else
+                closeAbout();
+            repaint();
+            return true;
+        }
         // An open preset list takes the click, wherever it lands.
         if (presetListOpen_) {
             onPresetListClick(x, y);
@@ -273,6 +298,11 @@ protected:
             return true;
         case Button::EditConfirm:
         case Button::EditCancel:
+            return true;
+        case Button::About:
+            aboutOpen_ = true;
+            hovered_ = nullptr;
+            repaint();
             return true;
         case Button::Language:
             language_ = language_ == Language::English ? Language::French : Language::English;
@@ -340,6 +370,15 @@ protected:
             return true;
         }
 
+        if (aboutOpen_) {
+            const bool overLinkNow = overLink(x, y);
+            if (overLinkNow != hoveredLink_) {
+                hoveredLink_ = overLinkNow;
+                getWindow().setCursor(overLinkNow ? kMouseCursorHand : kMouseCursorArrow);
+                repaint();
+            }
+            return false;
+        }
         const Control* hovered = controlAt(x, y);
         const Button button = buttonAt(x, y);
         const int row = presetListOpen_ ? presetRowAt(x, y) : -1;
@@ -356,6 +395,8 @@ protected:
 
     bool onScroll(const ScrollEvent& ev) override
     {
+        if (aboutOpen_)
+            return true;
         if (presetListOpen_) {
             const int maxScroll = std::max(0, static_cast<int>(rows_.size()) - kPresetListMaxRows);
             listScroll_ = std::clamp(listScroll_ + (ev.delta.getY() > 0 ? -1 : 1), 0, maxScroll);
@@ -393,6 +434,11 @@ protected:
 
     bool onKeyboard(const KeyboardEvent& ev) override
     {
+        if (aboutOpen_ && ev.press && ev.key == kKeyEscape) {
+            closeAbout();
+            repaint();
+            return true;
+        }
         if (!editingName_)
             return false;
         if (ev.press) {
@@ -498,6 +544,12 @@ private:
 
     static const titv::ParamInfo& info(Param p) { return titv::info(p); }
 
+    float autoY() const
+    {
+        return kAutoGapMiddleY - (hasUndo_ ? kAutoH + kAutoGap / 2 : kAutoH / 2);
+    }
+    float undoY() const { return autoY() + kAutoH + kAutoGap; }
+
     float value(Param p) const { return values_[titv::index(p)]; }
 
     void setValue(Param p, float v)
@@ -531,7 +583,7 @@ private:
     static void meterRect(const Section& s, float& x, float& y, float& w, float& h)
     {
         w = 22.0f;
-        h = 190.0f;
+        h = 168.0f;
         x = s.x + (s.w - w) / 2;
         y = kSectionTop + 44.0f;
     }
@@ -555,7 +607,10 @@ private:
         fontSize(19);
         textAlign(ALIGN_LEFT | ALIGN_MIDDLE);
         fillColor(kColors.text);
-        text(18, 25, "THIS IS THE VOICE", nullptr);
+        text(18, 19, "THIS IS THE VOICE", nullptr);
+        fontSize(11);
+        fillColor(kColors.textDim);
+        text(18, 38, "The ultimate 0 latency Vocal chain", nullptr);
         if (engine_ != nullptr) {
             char buf[48];
             const Text format = engine_->tempoIsFallback() ? Text::TempoFallback : Text::TempoHost;
@@ -749,11 +804,13 @@ private:
             return Button::PresetNext;
         if (inside(x, y, kPresetX, kPresetY, kPresetW, kPresetH))
             return Button::PresetName;
+        if (inside(x, y, kAboutCx - kAboutR, kAboutCy - kAboutR, 2 * kAboutR, 2 * kAboutR))
+            return Button::About;
         if (engine_ == nullptr)
             return Button::None;
-        if (inside(x, y, kAutoX, kAutoY, kAutoW, kAutoH))
+        if (inside(x, y, kAutoX, autoY(), kAutoW, kAutoH))
             return Button::Auto;
-        if (hasUndo_ && inside(x, y, kUndoX, kAutoY, kUndoW, kAutoH))
+        if (hasUndo_ && inside(x, y, kUndoX, undoY(), kUndoW, kAutoH))
             return Button::Undo;
         return Button::None;
     }
@@ -1006,7 +1063,7 @@ private:
         const bool listening = autoLevel.state() == titv::dsp::AutoLevel::State::Listening;
 
         beginPath();
-        roundedRect(kAutoX, kAutoY, kAutoW, kAutoH, kAutoH / 2);
+        roundedRect(kAutoX, autoY(), kAutoW, kAutoH, kAutoH / 2);
         fillColor(kColors.track);
         fill();
 
@@ -1016,7 +1073,7 @@ private:
             const float p = autoLevel.progress();
             if (p > 0.0f) {
                 beginPath();
-                roundedRect(kAutoX, kAutoY, std::max(kAutoH, kAutoW * p), kAutoH, kAutoH / 2);
+                roundedRect(kAutoX, autoY(), std::max(kAutoH, kAutoW * p), kAutoH, kAutoH / 2);
                 fillColor(kColors.accent);
                 fill();
             }
@@ -1028,16 +1085,16 @@ private:
         fontSize(10);
         textAlign(ALIGN_CENTER | ALIGN_MIDDLE);
         fillColor(listening ? kColors.text : kColors.textDim);
-        text(kAutoX + kAutoW / 2, kAutoY + kAutoH / 2 + 1, label, nullptr);
+        text(kAutoX + kAutoW / 2, autoY() + kAutoH / 2 + 1, label, nullptr);
 
         if (hasUndo_ && !listening) {
             beginPath();
-            roundedRect(kUndoX, kAutoY, kUndoW, kAutoH, kAutoH / 2);
+            roundedRect(kUndoX, undoY(), kUndoW, kAutoH, kAutoH / 2);
             fillColor(kColors.track);
             fill();
             fontSize(12);
             fillColor(kColors.textDim);
-            text(kUndoX + kUndoW / 2, kAutoY + kAutoH / 2 + 1, "\u21ba", nullptr);
+            text(kUndoX + kUndoW / 2, undoY() + kAutoH / 2 + 1, "\u21ba", nullptr);
         }
     }
 
@@ -1110,6 +1167,8 @@ private:
             help = titv::ui::text(Text::AutoLevelHelp, language_);
         else if (hoveredButton_ == Button::Undo)
             help = titv::ui::text(Text::AutoLevelUndoHelp, language_);
+        else if (hoveredButton_ == Button::About)
+            help = titv::ui::text(Text::AboutHelp, language_);
         if (help == nullptr)
             return;
         fontFace(NANOVG_DEJAVU_SANS_TTF);
@@ -1117,6 +1176,93 @@ private:
         textAlign(ALIGN_LEFT | ALIGN_MIDDLE);
         fillColor(kColors.textDim);
         text(18, kHelpTop + 18, help, nullptr);
+    }
+
+    void drawAboutButton()
+    {
+        const bool hot = hoveredButton_ == Button::About;
+        beginPath();
+        circle(kAboutCx, kAboutCy, kAboutR);
+        fillColor(kColors.track);
+        fill();
+        fontFace(NANOVG_DEJAVU_SANS_TTF);
+        fontSize(13);
+        textAlign(ALIGN_CENTER | ALIGN_MIDDLE);
+        fillColor(hot ? kColors.accent : kColors.textDim);
+        text(kAboutCx, kAboutCy + 1, "?", nullptr);
+    }
+
+    bool overLink(float x, float y) const
+    {
+        return aboutOpen_ && inside(x, y, linkBox_.x, linkBox_.y, linkBox_.w, linkBox_.h);
+    }
+
+    void closeAbout()
+    {
+        aboutOpen_ = false;
+        if (hoveredLink_) {
+            hoveredLink_ = false;
+            getWindow().setCursor(kMouseCursorArrow);
+        }
+    }
+
+    void drawAbout()
+    {
+        if (!aboutOpen_)
+            return;
+        // Dim the editor, then a panel in the middle.
+        beginPath();
+        rect(0, 0, kWidth, kHeight);
+        fillColor(Color(0, 0, 0, 0.6f));
+        fill();
+
+        const float x = (kWidth - kAboutPanelW) / 2, y = (kHeight - kAboutPanelH) / 2;
+        beginPath();
+        roundedRect(x, y, kAboutPanelW, kAboutPanelH, 10);
+        fillColor(kColors.panel);
+        fill();
+        strokeColor(kColors.panelEdge);
+        strokeWidth(1);
+        stroke();
+
+        const float left = x + 32, width = kAboutPanelW - 64;
+        fontFace(NANOVG_DEJAVU_SANS_TTF);
+        textAlign(ALIGN_LEFT | ALIGN_TOP);
+
+        fontSize(20);
+        fillColor(kColors.text);
+        text(left, y + 28, "THIS IS THE VOICE", nullptr);
+        const char* version = "v" TITV_VERSION_LABEL;
+        fontSize(12);
+        fillColor(kColors.textDim);
+        textAlign(ALIGN_RIGHT | ALIGN_TOP);
+        text(x + kAboutPanelW - 32, y + 34, version, nullptr);
+
+        textAlign(ALIGN_LEFT | ALIGN_TOP);
+        fontSize(14);
+        fillColor(kColors.accent);
+        text(left, y + 62, titv::ui::text(Text::AboutBy, language_), nullptr);
+        fillColor(kColors.text);
+        fontSize(13);
+        text(left, y + 92, titv::ui::text(Text::AboutFree, language_), nullptr);
+        fillColor(kColors.textDim);
+        textBox(left, y + 114, width, titv::ui::text(Text::AboutLicence, language_), nullptr);
+        // The repository link, underlined on hover; its box is kept for clicks.
+        fillColor(hoveredLink_ ? kColors.accent : kColors.text);
+        const float linkWidth = text(left, y + 166, DISTRHO_PLUGIN_URI, nullptr) - left;
+        linkBox_ = { left, y + 164, linkWidth, 18 };
+        if (hoveredLink_) {
+            beginPath();
+            rect(left, y + 181, linkWidth, 1);
+            fillColor(kColors.accent);
+            fill();
+        }
+        fontSize(11);
+        fillColor(kColors.textDim);
+        textBox(left, y + 200, width, titv::ui::text(Text::AboutBuiltWith, language_), nullptr);
+
+        textAlign(ALIGN_CENTER | ALIGN_TOP);
+        text(x + kAboutPanelW / 2, y + kAboutPanelH - 28, titv::ui::text(Text::AboutClose, language_), nullptr);
     }
 
     titv::Engine* engine_ = nullptr;
@@ -1128,6 +1274,9 @@ private:
     titv::ui::PresetBrowser presets_;
     std::vector<PresetRow> rows_;
     bool presetListOpen_ = false;
+    bool aboutOpen_ = false;
+    bool hoveredLink_ = false;
+    struct { float x, y, w, h; } linkBox_ {}; // set when the panel is drawn
     int listScroll_ = 0;
     int hoveredRow_ = -1;
     bool hoveredDelete_ = false;

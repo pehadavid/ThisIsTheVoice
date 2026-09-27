@@ -16,7 +16,8 @@ enum class Language { English, French };
 
 enum class Text { TempoFallback, TempoHost, LanguageHelp, AutoLevelHelp, AutoLevelUndoHelp, PresetHelp,
                   UserPresetsHeader, SavePreset, PresetNamePlaceholder, SavePresetHelp, SavePresetReplaceHelp,
-                  DeletePresetConfirm, DeletePresetHelp, Count };
+                  DeletePresetConfirm, DeletePresetHelp, AboutHelp, AboutBy, AboutFree, AboutLicence,
+                  AboutBuiltWith, AboutClose, Count };
 
 inline constexpr std::array<const char*, kParamCount> kHelpFrench = { {
     "Bypass : sortie directe du signal d'origine, sans traitement.", // global_bypass
@@ -66,6 +67,14 @@ inline constexpr std::array<const char*, static_cast<std::size_t>(Text::Count)> 
     "A preset with this name exists: Enter replaces it.",
     "Delete?",
     "Delete this user preset (click again to confirm).",
+    "About: credits and licence.",
+    "Created by Pierre-Alain David",
+    "Free and open-source software, at no cost.",
+    "Released under the GNU General Public License, version 3 or later: you may use, study, share and "
+    "modify it. It comes with no warranty.",
+    "Built with DPF (ISC, Filipe Coelho), CLAP (MIT), LV2 (ISC), pugl (ISC), NanoVG (zlib) and the DejaVu Sans "
+    "font.",
+    "Click anywhere to close.",
 } };
 
 inline constexpr std::array<const char*, static_cast<std::size_t>(Text::Count)> kTextsFrench = { {
@@ -82,6 +91,14 @@ inline constexpr std::array<const char*, static_cast<std::size_t>(Text::Count)> 
     "Un preset porte déjà ce nom : Entrée le remplace.",
     "Supprimer ?",
     "Supprimer ce preset utilisateur (cliquer à nouveau pour confirmer).",
+    "À propos : crédits et licence.",
+    "Créé par Pierre-Alain David",
+    "Logiciel libre et open source, entièrement gratuit.",
+    "Distribué sous la licence publique générale GNU, version 3 ou ultérieure : vous pouvez l'utiliser, "
+    "l'étudier, le partager et le modifier. Il est fourni sans aucune garantie.",
+    "Construit avec DPF (ISC, Filipe Coelho), CLAP (MIT), LV2 (ISC), pugl (ISC), NanoVG (zlib) et la police "
+    "DejaVu Sans.",
+    "Cliquer n'importe où pour fermer.",
 } };
 
 inline const char* helpText(Param p, Language lang)

@@ -1,0 +1,53 @@
+diff --git a/src/win_gl.c b/src/win_gl.c
+index 4f33e36..245a4ac 100644
+--- a/src/win_gl.c
++++ b/src/win_gl.c
+@@ -171,17 +171,18 @@ puglWinGlConfigure(PuglView* view)
+   wglMakeCurrent(fakeWin.hdc, fakeRc);
+   surface->procs = puglWinGlGetProcs();
+ 
+-  if (surface->procs.wglChoosePixelFormat) {
+-    // Choose pixel format based on attributes
+-    UINT numFormats = 0;
+-    if (!surface->procs.wglChoosePixelFormat(
+-          fakeWin.hdc, pixelAttrs, NULL, 1U, &impl->pfId, &numFormats)) {
+-      return puglWinError(&fakeWin, PUGL_SET_FORMAT_FAILED);
+-    }
+-
+-    DescribePixelFormat(impl->hdc, impl->pfId, sizeof(impl->pfd), &impl->pfd);
++  // Choose pixel format based on attributes. The driver may match nothing
++  // (Wine on EGL offers no window format with alpha bits): it then reports
++  // success with no format, and the basic pixel format is used instead.
++  UINT numFormats = 0;
++  if (surface->procs.wglChoosePixelFormat &&
++      surface->procs.wglChoosePixelFormat(
++        fakeWin.hdc, pixelAttrs, NULL, 1U, &impl->pfId, &numFormats) &&
++      numFormats > 0 && impl->pfId > 0) {
++    DescribePixelFormat(
++      fakeWin.hdc, impl->pfId, sizeof(impl->pfd), &impl->pfd);
+   } else {
+-    // Modern extensions not available, use basic pixel format
++    // Modern extensions not available or no match, use basic pixel format
+     impl->pfd  = fakePfd;
+     impl->pfId = fakePfId;
+   }
+@@ -232,14 +233,13 @@ puglWinGlCreate(PuglView* view)
+     return PUGL_SET_FORMAT_FAILED;
+   }
+ 
+-  // Create GL context
+-  if (surface->procs.wglCreateContextAttribs &&
+-      !(surface->hglrc = surface->procs.wglCreateContextAttribs(
+-          impl->hdc, 0, contextAttribs))) {
+-    return PUGL_CREATE_CONTEXT_FAILED;
++  // Create GL context, with the basic function if the attributes are refused
++  if (surface->procs.wglCreateContextAttribs) {
++    surface->hglrc =
++      surface->procs.wglCreateContextAttribs(impl->hdc, 0, contextAttribs);
+   }
+ 
+-  if (!(surface->hglrc = wglCreateContext(impl->hdc))) {
++  if (!surface->hglrc && !(surface->hglrc = wglCreateContext(impl->hdc))) {
+     return PUGL_CREATE_CONTEXT_FAILED;
+   }
+ 
