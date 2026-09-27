@@ -62,6 +62,70 @@ Seven factory presets (Natural Voice, Dense Lead, Wide Backing, Spoken Word, Ad-
 
 CLAP and VST3 on Linux, macOS and Windows, Audio Unit on macOS, LV2 on Linux. Intel and Apple Silicon. Resizable to fit any screen, sharp on HiDPI displays.
 
+## Measured, not promised.
+
+Every graph below was rendered from the plugin's actual audio engine, one control at a time, with everything else set to neutral (HPF off, COMPRESS at 0 %, TONE off, every other knob at 0). Each control is shown at 0 %, 50 % and 100 %.
+
+- **Test signal:** a synthetic voice at -18 dBFS RMS, with moving pitch and vowels, phrases alternating between loud and 18 dB quieter, a sharp "s" every 0.75 s and a 45 Hz rumble underneath. EQ-type controls are also measured on pink noise.
+- **How to read a spectrogram (top row):** time runs left to right, frequency bottom to top, and brighter means louder. The horizontal stripes are the harmonics of the voice, the vertical flashes at the top are the "s" sounds, and the band at the very bottom is the rumble.
+- **The graph underneath** zooms in on what that control changes: a frequency response, a level over time, or a spectrum.
+
+Measured on 2026-09-27 with version 0.9.x. A synthetic voice makes every graph repeatable; a real voice will not give the same numbers, but it will follow the same trends.
+
+### HPF
+
+Two gentle high-pass filters, one at the input (90 Hz) and one at the output (100 Hz). Together they take off 5 dB at 100 Hz and 18 dB at 60 Hz, and leave everything above 200 Hz alone. On the spectrogram, the rumble band at the bottom goes dark while the voice stays exactly as it was.
+
+<p align="center"><img src="assets/measurements/hpf.png" alt="HPF off and on: spectrograms and frequency response" width="100%"></p>
+
+### COMPRESS
+
+The bottom graph follows the level of the voice over time. At 0 %, loud and quiet phrases are about 25 dB apart. At 50 % the gap shrinks to 16 dB, at 100 % to 8 dB: quiet phrases come up, loud ones come down, peaks never pass -2 dBFS, and the average level stays within 2 dB of the input. The spectrograms barely change, because COMPRESS works on level, not on tone. At 100 %, anything quiet comes up with the voice, low rumble included: that is what the HPF is for.
+
+<p align="center"><img src="assets/measurements/compress.png" alt="COMPRESS at 0, 50 and 100 %: spectrograms and level over time" width="100%"></p>
+
+### TONE
+
+Each band runs from -15 dB (0 %) to +15 dB (100 %), with 0 dB in the middle. The middle curve is not perfectly flat, on purpose: whenever TONE is on, it adds a gentle built-in colour, about 1.5 dB less around 250 Hz and 1.5 dB more at the very top.
+
+**Body** is a low shelf for the weight of the voice: it acts below about 300 Hz and reaches its full ±15 dB below 60 Hz.
+
+<p align="center"><img src="assets/measurements/tone_body.png" alt="TONE Body at -15, 0 and +15 dB" width="100%"></p>
+
+**Mid** is a bell centred around 1.2 kHz, where a voice sounds nasal or boxy when there is too much and hollow when there is too little.
+
+<p align="center"><img src="assets/measurements/tone_mid.png" alt="TONE Mid at -15, 0 and +15 dB" width="100%"></p>
+
+**Presence** is a bell centred around 4.5 kHz, the range that makes words clear and brings the voice to the front.
+
+<p align="center"><img src="assets/measurements/tone_presence.png" alt="TONE Presence at -15, 0 and +15 dB" width="100%"></p>
+
+**Air** is a high shelf above 5 kHz, and a dynamic one: it backs off on every "s", so the boost is reserved for breath and shine. That is why its curve is slightly uneven, and why on noise it reaches about +11 dB at 20 kHz rather than the full +15.
+
+<p align="center"><img src="assets/measurements/tone_air.png" alt="TONE Air at -15, 0 and +15 dB" width="100%"></p>
+
+### COLOR
+
+**De-Ess** only acts while an "s" is sounding (solid lines): up to about 6 dB at 50 % and 12 dB at 100 %, centred on 7 kHz. The rest of the voice (dashed lines) stays within a fraction of a dB. Detection compares the "s" to the rest of the voice rather than to a fixed level, so the same setting works whether you sing softly or loudly.
+
+<p align="center"><img src="assets/measurements/color_deess.png" alt="De-Ess at 0, 50 and 100 %: reduction during sibilants and elsewhere" width="100%"></p>
+
+**Saturate** adds harmonics in parallel. The bottom graph feeds it a single 220 Hz tone: at 0 % there is nothing but that tone, at 50 % a few harmonics appear, and at 100 % they stack up to about 5 kHz, mostly odd ones, for warmth and density without fizz.
+
+<p align="center"><img src="assets/measurements/color_saturate.png" alt="Saturate at 0, 50 and 100 %: harmonics on a 220 Hz tone" width="100%"></p>
+
+**Radio** narrows the voice down to a telephone band, about 350 Hz to 3.4 kHz, with a small bump around 1.7 kHz. At 100 % it is a pure telephone voice. Halfway, the original and the filtered voice are blended, and at the two edges of the band they partly cancel each other: the two dips on the 50 % curve are that cancellation, and they give the in-between settings their slightly phased, vintage character.
+
+<p align="center"><img src="assets/measurements/color_radio.png" alt="Radio at 0, 50 and 100 %: frequency response" width="100%"></p>
+
+**Double** adds slightly delayed, slightly detuned copies, spread left and right, like a second take. The bottom graph splits the output into mid (what both speakers share, solid) and side (the difference between them, dashed): at 0 % there is no side at all, since the test voice is mono; turn the knob up and the side appears while the mid barely moves, so the voice gets wider without getting muddier.
+
+<p align="center"><img src="assets/measurements/color_double.png" alt="Double at 0, 50 and 100 %: mid and side spectra" width="100%"></p>
+
+**Chorus** does the same with continuously modulated delays, for a wider and more obviously moving sound. On the spectrogram, the lowest frequencies pulse gently with the modulation; with the HPF on, there is nothing down there to pulse.
+
+<p align="center"><img src="assets/measurements/color_chorus.png" alt="Chorus at 0, 50 and 100 %: mid and side spectra" width="100%"></p>
+
 ## Download
 
 Installers for Linux, macOS and Windows are attached to the [latest release](https://github.com/pehadavid/ThisIsTheVoice/releases/latest). Development builds from the `dev` branch are on the [Releases page](https://github.com/pehadavid/ThisIsTheVoice/releases) as a pre-release.
@@ -76,7 +140,7 @@ The macOS and Windows files are not signed by an identified developer. On macOS,
 
 ## Build from source
 
-Everything below is for developers: building the plugin yourself, working on the code and releasing it.
+To build the plugin yourself. The engine and its tests also build alone, without DPF or any graphics dependency: `cmake -S . -B build -DTITV_BUILD_PLUGIN=OFF`.
 
 ### Linux
 
@@ -118,31 +182,6 @@ scripts/install-macos.sh --uninstall
 ```
 
 The AU format (the only one Logic Pro loads) is built on macOS only. Bundles get an ad-hoc signature, enough on your own machine; public distribution needs a Developer ID signature and notarization.
-
-### Development
-
-The engine and its tests build without DPF or any graphics dependency: `cmake -S . -B build -DTITV_BUILD_PLUGIN=OFF`. `build/tests/titv_bench [seconds]` runs the processing-time benchmark and `build/tests/titv_measure` prints the measured characteristics of every module.
-
-```text
-src/dsp/      DSP modules (tone, dynamics, colour effects, echo, reverbs, ducking, Auto Level), no dependencies
-src/engine/   parameter registry, factory presets and signal chain
-src/plugin/   DPF adapter (VST3, CLAP, LV2, AU, JACK)
-src/ui/       NanoVG editor, user presets, English and French texts
-tests/        tests, benchmark and measurement tool
-patches/      small changes to DPF, applied at configure time
-third_party/  Khronos OpenGL headers for Windows builds (MIT)
-external/DPF  DISTRHO Plugin Framework (submodule)
-```
-
-Every push is built, tested and validated on Linux, macOS and Windows (clap-validator, pluginval, Steinberg's VST3 validator, auval) by `.github/workflows/build.yml`, which also packages the three installers. Work happens on the `dev` branch: every push to `dev` replaces the **Development build** pre-release with fresh installers, named after the next version (`<next version>-dev.<build number>`). Releases come from `main` and are numbered automatically: each merge of `dev` into `main` publishes the next patch after the latest `v*` tag, with the installers attached, as the latest release. For a new minor or major version, raise `TITV_BASE_VERSION` in `CMakeLists.txt`: the next release starts from it (`scripts/ci/version.sh`). `scripts/package-linux.sh`, `scripts/package-macos.sh` and `packaging/windows/ThisIsTheVoice.iss` build the same installers by hand.
-
-Parameter IDs (their order in `src/engine/Parameters.hpp`) and factory preset ids are frozen: saved projects depend on them, so new entries are only ever appended; tests enforce it.
-
-`patches/` holds small changes to DPF, applied automatically when CMake configures the project, so the submodule stays upstream DPF:
-
-- `dpf-tail.patch` reports the plugin's tail length (reverb and echo decay) to VST3 hosts;
-- `dpf-vst3-parameter-sync.patch` applies controller-side VST3 parameter changes at once;
-- `dpf-state-chunked-read.patch` fixes the CLAP and VST3 state parsers when a host delivers the saved state in small chunks.
 
 ## License
 
