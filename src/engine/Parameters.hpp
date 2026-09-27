@@ -161,6 +161,50 @@ inline constexpr std::array<ParamInfo, kParamCount> kParams = { {
 
 constexpr const ParamInfo& info(Param p) noexcept { return kParams[index(p)]; }
 
+// Order in which hosts list the parameters (VST3, CLAP, AU). Controllers that map
+// the list onto their knobs by eights (Komplete Kontrol, generic host mappings) get
+// the Main page first, then the other knobs section by section, then the switches.
+// Unlike the indices, this order can change between versions.
+inline constexpr std::array<Param, kParamCount> kDisplayOrder = { {
+    Param::InputGainDb, Param::CompressAmount, Param::TonePresenceDb, Param::ToneAirDb,
+    Param::ColorDeess, Param::EchoSend, Param::SpacePlate, Param::OutputGainDb,
+    Param::ToneBodyDb, Param::ToneMidDb,
+    Param::ColorSaturate, Param::ColorRadio, Param::ColorDouble, Param::ColorChorus,
+    Param::EchoRepeats, Param::EchoLofi, Param::EchoNote, Param::EchoBounce,
+    Param::SpaceRoom, Param::SpaceHall, Param::SpaceAmbient,
+    Param::HpfEnabled, Param::ToneEnabled, Param::ColorEnabled, Param::EchoEnabled, Param::SpaceEnabled,
+    Param::SpaceRoomEnabled, Param::SpacePlateEnabled, Param::SpaceHallEnabled, Param::SpaceAmbientEnabled,
+    Param::GlobalBypass,
+} };
+
+// Remote controls pages (CLAP remote-controls extension): what a hardware
+// controller shows on its 8 knobs. Param::Count marks an empty slot.
+inline constexpr uint32_t kControlPageSlots = 8;
+
+struct ControlPage {
+    const char* section;
+    const char* name;
+    std::array<Param, kControlPageSlots> params;
+};
+
+inline constexpr Param kNoParam = Param::Count;
+
+inline constexpr std::array<ControlPage, 6> kControlPages = { {
+    { "Main", "Main", { Param::InputGainDb, Param::CompressAmount, Param::TonePresenceDb, Param::ToneAirDb,
+                        Param::ColorDeess, Param::EchoSend, Param::SpacePlate, Param::OutputGainDb } },
+    { "Tone", "Tone", { Param::ToneBodyDb, Param::ToneMidDb, Param::TonePresenceDb, Param::ToneAirDb,
+                        Param::ToneEnabled, Param::HpfEnabled, kNoParam, kNoParam } },
+    { "Color", "Color", { Param::ColorDeess, Param::ColorSaturate, Param::ColorRadio, Param::ColorDouble,
+                          Param::ColorChorus, Param::ColorEnabled, kNoParam, kNoParam } },
+    { "Echo", "Echo", { Param::EchoSend, Param::EchoRepeats, Param::EchoLofi, Param::EchoNote,
+                        Param::EchoBounce, Param::EchoEnabled, kNoParam, kNoParam } },
+    { "Space", "Space", { Param::SpaceRoom, Param::SpacePlate, Param::SpaceHall, Param::SpaceAmbient,
+                          Param::SpaceRoomEnabled, Param::SpacePlateEnabled, Param::SpaceHallEnabled,
+                          Param::SpaceAmbientEnabled } },
+    { "Switches", "Switches", { Param::GlobalBypass, Param::HpfEnabled, Param::ToneEnabled, Param::ColorEnabled,
+                                Param::EchoEnabled, Param::SpaceEnabled, kNoParam, kNoParam } },
+} };
+
 // Version of the saved-state schema. Bump it when the meaning of a stored value
 // changes, and add the conversion from older versions in VoicePlugin::setState.
 inline constexpr int kStateSchemaVersion = 1;

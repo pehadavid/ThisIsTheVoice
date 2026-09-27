@@ -66,12 +66,16 @@ if(TITV_BUILD_PLUGIN)
   #   once in single-component mode, so host and controller stay in sync.
   # dpf-state-chunked-read.patch: fixes the CLAP and VST3 state parsers when the host
   #   delivers the saved state in small chunks.
+  # dpf-controller-layout.patch: lets the plugin choose the order hosts list its parameters
+  #   in (VST3, CLAP, AU) without changing their IDs, and adds the CLAP remote-controls
+  #   extension (parameter pages for hardware controllers).
   # pugl-wgl-format-fallback.patch: falls back to the basic pixel format and context
   #   when WGL matches no format (Wine on EGL has no window format with alpha bits),
   #   instead of failing to open the editor.
   foreach(entry .:dpf-tail.patch
                 .:dpf-vst3-parameter-sync.patch
                 .:dpf-state-chunked-read.patch
+                .:dpf-controller-layout.patch
                 dgl/src/pugl-upstream:pugl-wgl-format-fallback.patch)
     string(REPLACE ":" ";" entry "${entry}")
     list(GET entry 0 patch_dir)

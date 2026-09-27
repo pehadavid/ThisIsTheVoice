@@ -25,6 +25,10 @@
 // Tail length reported to VST3 hosts (needs patches/dpf-tail.patch). CLAP hosts keep
 // processing the plugin anyway: DPF always asks them to continue.
 #define DISTRHO_PLUGIN_WANT_TAIL           1
+// Parameters are listed in titv::kDisplayOrder rather than by index, and CLAP hosts
+// get titv::kControlPages for hardware controllers (needs patches/dpf-controller-layout.patch).
+#define DISTRHO_PLUGIN_WANT_PARAMETER_ORDER 1
+#define DISTRHO_PLUGIN_WANT_REMOTE_CONTROLS 1
 // Engine::setParameter only stores atomics: DPF may call setParameterValue from the
 // VST3 controller thread (needs patches/dpf-vst3-parameter-sync.patch).
 #define DISTRHO_PLUGIN_PARAMETERS_THREAD_SAFE 1

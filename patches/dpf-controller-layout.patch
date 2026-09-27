@@ -1,0 +1,381 @@
+diff --git a/distrho/DistrhoDetails.hpp b/distrho/DistrhoDetails.hpp
+index 34affacb..a32358e1 100644
+--- a/distrho/DistrhoDetails.hpp
++++ b/distrho/DistrhoDetails.hpp
+@@ -917,6 +917,46 @@ struct State {
+           description() {}
+ };
+ 
++/**
++   Remote controls page.
++
++   A named set of up to 8 parameters that hardware controllers map onto their knobs.
++   Several pages may share a section, and a parameter may appear on several pages.
++   @see Plugin::initRemoteControlsPage(uint32_t, RemoteControlsPage&)
++ */
++struct RemoteControlsPage {
++   /**
++      Number of parameter slots on a page.
++    */
++    static constexpr const uint32_t kSlotCount = 8;
++
++   /**
++      Name of the section the page belongs to, such as a module of the plugin.
++    */
++    String section;
++
++   /**
++      Name of the page.
++    */
++    String name;
++
++   /**
++      Index of the parameter in each slot, or -1 for an empty slot.
++    */
++    int32_t parameters[kSlotCount];
++
++   /**
++      Default constructor for an empty page.
++    */
++    RemoteControlsPage() noexcept
++        : section(),
++          name()
++    {
++        for (uint32_t i = 0; i < kSlotCount; ++i)
++            parameters[i] = -1;
++    }
++};
++
+ /**
+    MIDI event.
+  */
+diff --git a/distrho/DistrhoPlugin.hpp b/distrho/DistrhoPlugin.hpp
+index b59e794f..2dc4433a 100644
+--- a/distrho/DistrhoPlugin.hpp
++++ b/distrho/DistrhoPlugin.hpp
+@@ -293,6 +293,33 @@ protected:
+     */
+     virtual void initPortGroup(uint32_t groupId, PortGroup& portGroup);
+ 
++#if DISTRHO_PLUGIN_WANT_PARAMETER_ORDER
++   /**
++      Index of the parameter hosts list at @a position.@n
++      Parameter indices are also the IDs hosts save automation with, so they cannot change once published;
++      this lets a plugin present them in another order. Must be a permutation of the parameter indices.@n
++      Used by the VST3, CLAP and AU formats.
++      @see DISTRHO_PLUGIN_WANT_PARAMETER_ORDER
++    */
++    virtual uint32_t getParameterIndexAtPosition(uint32_t position) const { return position; }
++#endif
++
++#if DISTRHO_PLUGIN_WANT_REMOTE_CONTROLS
++   /**
++      Number of remote controls pages: named sets of up to 8 parameters that hardware controllers map
++      onto their knobs.@n
++      Only used by the CLAP format (remote-controls extension).
++      @see DISTRHO_PLUGIN_WANT_REMOTE_CONTROLS
++    */
++    virtual uint32_t getRemoteControlsPageCount() const { return 0; }
++
++   /**
++      Initialize a remote controls page, from 0 to getRemoteControlsPageCount() - 1.@n
++      Only used by the CLAP format; called from the main thread.
++    */
++    virtual void initRemoteControlsPage(uint32_t /*index*/, RemoteControlsPage& /*page*/) const {}
++#endif
++
+ #if DISTRHO_PLUGIN_WANT_PROGRAMS
+    /**
+       Set the name of the program @a index.@n
+diff --git a/distrho/src/DistrhoPluginAU.cpp b/distrho/src/DistrhoPluginAU.cpp
+index 919faa71..f75b4e2d 100644
+--- a/distrho/src/DistrhoPluginAU.cpp
++++ b/distrho/src/DistrhoPluginAU.cpp
+@@ -868,7 +868,7 @@ public:
+                 AudioUnitParameterID* const paramList = static_cast<AudioUnitParameterID*>(outData);
+ 
+                 for (uint32_t i=0; i<fParameterCount; ++i)
+-                    paramList[i] = i;
++                    paramList[i] = fPlugin.getParameterIndexAtPosition(i);
+             }
+             return noErr;
+ 
+diff --git a/distrho/src/DistrhoPluginCLAP.cpp b/distrho/src/DistrhoPluginCLAP.cpp
+index f2295b01..5ecc67bd 100644
+--- a/distrho/src/DistrhoPluginCLAP.cpp
++++ b/distrho/src/DistrhoPluginCLAP.cpp
+@@ -53,6 +53,7 @@
+ #include "clap/ext/gui.h"
+ #include "clap/ext/note-ports.h"
+ #include "clap/ext/params.h"
++#include "clap/ext/remote-controls.h"
+ #include "clap/ext/state.h"
+ #include "clap/ext/thread-check.h"
+ #include "clap/ext/timer-support.h"
+@@ -1142,8 +1143,10 @@ public:
+         return fPlugin.getParameterCount();
+     }
+ 
+-    bool getParameterInfo(const uint32_t index, clap_param_info_t* const info) const
++    bool getParameterInfo(const uint32_t position, clap_param_info_t* const info) const
+     {
++        // hosts list the parameters in this order; the ID stays the parameter index
++        const uint32_t index = fPlugin.getParameterIndexAtPosition(position);
+         const ParameterRanges& ranges(fPlugin.getParameterRanges(index));
+ 
+         switch (fPlugin.getParameterDesignation(index))
+@@ -1205,6 +1208,35 @@ public:
+         return true;
+     }
+ 
++   #if DISTRHO_PLUGIN_WANT_REMOTE_CONTROLS
++    // ----------------------------------------------------------------------------------------------------------------
++    // remote controls
++
++    uint32_t getRemoteControlsPageCount() const
++    {
++        return fPlugin.getRemoteControlsPageCount();
++    }
++
++    bool getRemoteControlsPage(const uint32_t index, clap_remote_controls_page_t* const page) const
++    {
++        RemoteControlsPage rpage;
++        if (! fPlugin.initRemoteControlsPage(index, rpage))
++            return false;
++
++        std::memset(page, 0, sizeof(*page));
++        d_strncpy(page->section_name, rpage.section, CLAP_NAME_SIZE);
++        d_strncpy(page->page_name, rpage.name, CLAP_NAME_SIZE);
++        page->page_id = index;
++
++        for (uint32_t i = 0; i < CLAP_REMOTE_CONTROLS_COUNT && i < RemoteControlsPage::kSlotCount; ++i)
++            page->param_ids[i] = rpage.parameters[i] >= 0 ? static_cast<clap_id>(rpage.parameters[i])
++                                                          : CLAP_INVALID_ID;
++
++        page->is_for_preset = false;
++        return true;
++    }
++   #endif
++
+     bool getParameterStringForValue(const clap_id param_id, double value, char* const display, const uint32_t size) const
+     {
+         const ParameterEnumerationValues& enumValues(fPlugin.getParameterEnumValues(param_id));
+@@ -2402,6 +2434,28 @@ static void CLAP_ABI clap_plugin_params_flush(const clap_plugin_t* plugin, const
+     return instance->flushParameters(in, out, 0);
+ }
+ 
++#if DISTRHO_PLUGIN_WANT_REMOTE_CONTROLS
++// --------------------------------------------------------------------------------------------------------------------
++// plugin remote controls
++
++static uint32_t CLAP_ABI clap_plugin_remote_controls_count(const clap_plugin_t* const plugin)
++{
++    PluginCLAP* const instance = static_cast<PluginCLAP*>(plugin->plugin_data);
++    return instance->getRemoteControlsPageCount();
++}
++
++static bool CLAP_ABI clap_plugin_remote_controls_get(const clap_plugin_t* const plugin, const uint32_t page_index, clap_remote_controls_page_t* const page)
++{
++    PluginCLAP* const instance = static_cast<PluginCLAP*>(plugin->plugin_data);
++    return instance->getRemoteControlsPage(page_index, page);
++}
++
++static const clap_plugin_remote_controls_t clap_plugin_remote_controls = {
++    clap_plugin_remote_controls_count,
++    clap_plugin_remote_controls_get
++};
++#endif
++
+ static const clap_plugin_params_t clap_plugin_params = {
+     clap_plugin_params_count,
+     clap_plugin_params_get_info,
+@@ -2509,6 +2563,10 @@ static const void* CLAP_ABI clap_plugin_get_extension(const clap_plugin_t*, cons
+         return &clap_plugin_params;
+     if (std::strcmp(id, CLAP_EXT_STATE) == 0)
+         return &clap_plugin_state;
++   #if DISTRHO_PLUGIN_WANT_REMOTE_CONTROLS
++    if (std::strcmp(id, CLAP_EXT_REMOTE_CONTROLS) == 0 || std::strcmp(id, CLAP_EXT_REMOTE_CONTROLS_COMPAT) == 0)
++        return &clap_plugin_remote_controls;
++   #endif
+    #if DISTRHO_PLUGIN_NUM_INPUTS+DISTRHO_PLUGIN_NUM_OUTPUTS != 0
+     if (std::strcmp(id, CLAP_EXT_AUDIO_PORTS) == 0)
+         return &clap_plugin_audio_ports;
+diff --git a/distrho/src/DistrhoPluginChecks.h b/distrho/src/DistrhoPluginChecks.h
+index 8e1ca7cd..8eefe456 100644
+--- a/distrho/src/DistrhoPluginChecks.h
++++ b/distrho/src/DistrhoPluginChecks.h
+@@ -98,6 +98,14 @@
+ # define DISTRHO_PLUGIN_WANT_TIMEPOS 0
+ #endif
+ 
++#ifndef DISTRHO_PLUGIN_WANT_PARAMETER_ORDER
++# define DISTRHO_PLUGIN_WANT_PARAMETER_ORDER 0
++#endif
++
++#ifndef DISTRHO_PLUGIN_WANT_REMOTE_CONTROLS
++# define DISTRHO_PLUGIN_WANT_REMOTE_CONTROLS 0
++#endif
++
+ #ifndef DISTRHO_UI_FILE_BROWSER
+ # define DISTRHO_UI_FILE_BROWSER 0
+ #endif
+diff --git a/distrho/src/DistrhoPluginInternal.hpp b/distrho/src/DistrhoPluginInternal.hpp
+index 89d5b73d..148eed87 100644
+--- a/distrho/src/DistrhoPluginInternal.hpp
++++ b/distrho/src/DistrhoPluginInternal.hpp
+@@ -715,6 +715,47 @@ public:
+         return fData->parameters[index].symbol;
+     }
+ 
++    uint32_t getParameterIndexAtPosition(const uint32_t position) const
++    {
++       #if DISTRHO_PLUGIN_WANT_PARAMETER_ORDER
++        DISTRHO_SAFE_ASSERT_RETURN(fPlugin != nullptr, position);
++        DISTRHO_SAFE_ASSERT_RETURN(fData != nullptr && position < fData->parameterCount, position);
++
++        const uint32_t index = fPlugin->getParameterIndexAtPosition(position);
++        DISTRHO_SAFE_ASSERT_UINT_RETURN(index < fData->parameterCount, index, position);
++
++        return index;
++       #else
++        return position;
++       #endif
++    }
++
++#if DISTRHO_PLUGIN_WANT_REMOTE_CONTROLS
++    uint32_t getRemoteControlsPageCount() const
++    {
++        DISTRHO_SAFE_ASSERT_RETURN(fPlugin != nullptr, 0);
++
++        return fPlugin->getRemoteControlsPageCount();
++    }
++
++    bool initRemoteControlsPage(const uint32_t index, RemoteControlsPage& page) const
++    {
++        DISTRHO_SAFE_ASSERT_RETURN(fPlugin != nullptr, false);
++        DISTRHO_SAFE_ASSERT_RETURN(fData != nullptr, false);
++        DISTRHO_SAFE_ASSERT_UINT_RETURN(index < fPlugin->getRemoteControlsPageCount(), index, false);
++
++        fPlugin->initRemoteControlsPage(index, page);
++
++        for (uint32_t i = 0; i < RemoteControlsPage::kSlotCount; ++i)
++        {
++            if (page.parameters[i] >= static_cast<int32_t>(fData->parameterCount))
++                page.parameters[i] = -1;
++        }
++
++        return true;
++    }
++#endif
++
+     const String& getParameterUnit(const uint32_t index) const noexcept
+     {
+         DISTRHO_SAFE_ASSERT_RETURN(fData != nullptr && index < fData->parameterCount, sFallbackString);
+diff --git a/distrho/src/DistrhoPluginVST3.cpp b/distrho/src/DistrhoPluginVST3.cpp
+index 500b6dd4..9b4284c8 100644
+--- a/distrho/src/DistrhoPluginVST3.cpp
++++ b/distrho/src/DistrhoPluginVST3.cpp
+@@ -1736,8 +1736,12 @@ public:
+         }
+        #endif
+ 
+-        const uint32_t index = static_cast<uint32_t>(rindex - kVst3InternalParameterCount);
+-        DISTRHO_SAFE_ASSERT_UINT_RETURN(index < fParameterCount, index, V3_INVALID_ARG);
++        const uint32_t position = static_cast<uint32_t>(rindex - kVst3InternalParameterCount);
++        DISTRHO_SAFE_ASSERT_UINT_RETURN(position < fParameterCount, position, V3_INVALID_ARG);
++
++        // hosts list the parameters in this order; the ID stays the parameter index
++        const uint32_t index = fPlugin.getParameterIndexAtPosition(position);
++        info->param_id = kVst3InternalParameterCount + index;
+ 
+         // set up flags
+         int32_t flags = 0;
+diff --git a/distrho/src/clap/ext/remote-controls.h b/distrho/src/clap/ext/remote-controls.h
+new file mode 100644
+index 00000000..9a3454fb
+--- /dev/null
++++ b/distrho/src/clap/ext/remote-controls.h
+@@ -0,0 +1,83 @@
++#pragma once
++
++#include "../plugin.h"
++#include "../string-sizes.h"
++
++// This extension lets the plugin provide a structured way of mapping parameters to a hardware
++// controller.
++//
++// This is done by providing a set of remote control pages organized by section.
++// A page contains up to 8 controls, which references parameters using param_id.
++//
++// |`- [section:main]
++// |    `- [name:main] performance controls
++// |`- [section:osc]
++// |   |`- [name:osc1] osc1 page
++// |   |`- [name:osc2] osc2 page
++// |   |`- [name:osc-sync] osc sync page
++// |    `- [name:osc-noise] osc noise page
++// |`- [section:filter]
++// |   |`- [name:flt1] filter 1 page
++// |    `- [name:flt2] filter 2 page
++// |`- [section:env]
++// |   |`- [name:env1] env1 page
++// |    `- [name:env2] env2 page
++// |`- [section:lfo]
++// |   |`- [name:lfo1] env1 page
++// |    `- [name:lfo2] env2 page
++//  `- etc...
++//
++// One possible workflow is to have a set of buttons, which correspond to a section.
++// Pressing that button once gets you to the first page of the section.
++// Press it again to cycle through the section's pages.
++
++static CLAP_CONSTEXPR const char CLAP_EXT_REMOTE_CONTROLS[] = "clap.remote-controls/2";
++
++// The latest draft is 100% compatible
++// This compat ID may be removed in 2026.
++static CLAP_CONSTEXPR const char CLAP_EXT_REMOTE_CONTROLS_COMPAT[] = "clap.remote-controls.draft/2";
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++enum { CLAP_REMOTE_CONTROLS_COUNT = 8 };
++
++typedef struct clap_remote_controls_page {
++   char    section_name[CLAP_NAME_SIZE];
++   clap_id page_id;
++   char    page_name[CLAP_NAME_SIZE];
++   clap_id param_ids[CLAP_REMOTE_CONTROLS_COUNT];
++
++   // This is used to separate device pages versus preset pages.
++   // If true, then this page is specific to this preset.
++   bool is_for_preset;
++} clap_remote_controls_page_t;
++
++typedef struct clap_plugin_remote_controls {
++   // Returns the number of pages.
++   // [main-thread]
++   uint32_t(CLAP_ABI *count)(const clap_plugin_t *plugin);
++
++   // Get a page by index.
++   // Returns true on success and stores the result into page.
++   // [main-thread]
++   bool(CLAP_ABI *get)(const clap_plugin_t         *plugin,
++                       uint32_t                     page_index,
++                       clap_remote_controls_page_t *page);
++} clap_plugin_remote_controls_t;
++
++typedef struct clap_host_remote_controls {
++   // Informs the host that the remote controls have changed.
++   // [main-thread]
++   void(CLAP_ABI *changed)(const clap_host_t *host);
++
++   // Suggest a page to the host because it corresponds to what the user is currently editing in the
++   // plugin's GUI.
++   // [main-thread]
++   void(CLAP_ABI *suggest_page)(const clap_host_t *host, clap_id page_id);
++} clap_host_remote_controls_t;
++
++#ifdef __cplusplus
++}
++#endif
