@@ -21,6 +21,7 @@ TEST(registry_is_frozen)
         "echo_enabled", "echo_send", "echo_repeats", "echo_lofi", "echo_note", "echo_bounce",
         "space_enabled", "space_room_enabled", "space_plate_enabled", "space_hall_enabled",
         "space_ambient_enabled", "space_room", "space_plate", "space_hall", "space_ambient",
+        "voice_register",
     };
     CHECK(kParamCount >= std::size(kFrozen));
     for (size_t i = 0; i < std::size(kFrozen) && i < kParamCount; ++i)
@@ -44,6 +45,9 @@ TEST(registry_entries_are_consistent)
     }
     CHECK(info(Param::GlobalBypass).kind == ParamKind::Toggle);
     CHECK(info(Param::EchoNote).max == static_cast<float>(kNoteDivisionCount - 1));
+    for (const ParamInfo& p : kParams)
+        if (p.kind == ParamKind::Choice)
+            CHECK(p.min == 0.0f && p.max == static_cast<float>(choiceCount(p.id) - 1));
 }
 
 TEST(display_order_is_a_permutation)
@@ -91,6 +95,8 @@ TEST(design_defaults)
     CHECK(info(Param::InputGainDb).min == -24.0f && info(Param::InputGainDb).max == 24.0f);
     CHECK(info(Param::OutputGainDb).min == -24.0f && info(Param::OutputGainDb).max == 12.0f);
     CHECK(std::strcmp(kNoteDivisions[kNoteDivisionDefault].label, "1/4") == 0);
+    CHECK(std::strcmp(choiceLabel(Param::VoiceRegister, static_cast<uint32_t>(info(Param::VoiceRegister).def)),
+                      "Neutral") == 0);
 }
 
 TEST(note_divisions)

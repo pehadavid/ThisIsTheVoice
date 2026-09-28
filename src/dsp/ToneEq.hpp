@@ -4,6 +4,7 @@
 #include "Biquad.hpp"
 #include "Envelope.hpp"
 #include "Smoother.hpp"
+#include "VoiceRegister.hpp"
 
 #include <array>
 #include <cstdint>
@@ -52,6 +53,8 @@ public:
     void reset() noexcept;
 
     void setGains(float bodyDb, float midDb, float presenceDb, float airDb) noexcept;
+    // Moves Body, Mid, Presence and the colour curve bells to the voice register.
+    void setRegister(VoiceRegister r) noexcept;
     // Diagnostic option: process without the tonal-colour curve.
     void setTonalColor(bool enabled) noexcept { tonalColor_ = enabled; }
 
@@ -64,9 +67,11 @@ public:
 
 private:
     void updateCoefficients() noexcept;
+    void applyColorCurve() noexcept;
 
     double sampleRate_ = 48000.0;
     bool tonalColor_ = true;
+    VoiceRegister register_ = VoiceRegister::Neutral;
     uint32_t countdown_ = 0;
 
     std::array<std::array<Biquad, 2>, kColorCurve.size()> color_;

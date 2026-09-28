@@ -35,7 +35,7 @@ TEST(presets_are_valid)
         std::set<Param> seen;
         for (const auto& [param, value] : p.values) {
             CHECK(seen.insert(param).second);           // each parameter once
-            CHECK(presetControls(param));               // never Input or Bypass
+            CHECK(presetControls(param));               // never Input, Voice or Bypass
             CHECK(Engine::clampToRange(param, value) == value); // in range, valid step
         }
     }

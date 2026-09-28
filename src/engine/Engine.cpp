@@ -56,12 +56,7 @@ void Engine::prepare(double sampleRate, uint32_t maxBlockSize)
         send.prepare(kSendSmoothingSeconds, sampleRate);
     slowRampSamplesLeft_ = 0;
 
-    const auto inHpf = dsp::BiquadCoeffs::highPass(kInputHpfHz, kHpfQ, sampleRate);
-    const auto outHpf = dsp::BiquadCoeffs::highPass(kOutputHpfHz, kHpfQ, sampleRate);
-    for (uint32_t ch = 0; ch < kChannels; ++ch) {
-        inputHpf_[ch].setCoeffs(inHpf);
-        outputHpf_[ch].setCoeffs(outHpf);
-    }
+    applyHpf();
 
     tone_.prepare(sampleRate);
     compressor_.prepare(sampleRate);
@@ -166,6 +161,32 @@ void Engine::setTempo(double bpm, bool valid) noexcept
     tempoFallback_.store(!usable, std::memory_order_relaxed);
 }
 
+void Engine::applyHpf() noexcept
+{
+    static_assert(dsp::kRegisterTunings[1].inputHpfHz == kInputHpfHz
+                  && dsp::kRegisterTunings[1].outputHpfHz == kOutputHpfHz);
+    const dsp::RegisterTuning& t = dsp::tuning(register_);
+    const auto inHpf = dsp::BiquadCoeffs::highPass(t.inputHpfHz, kHpfQ, sampleRate_);
+    const auto outHpf = dsp::BiquadCoeffs::highPass(t.outputHpfHz, kHpfQ, sampleRate_);
+    for (uint32_t ch = 0; ch < kChannels; ++ch) {
+        inputHpf_[ch].setCoeffs(inHpf);
+        outputHpf_[ch].setCoeffs(outHpf);
+    }
+}
+
+void Engine::setVoiceRegister(dsp::VoiceRegister r) noexcept
+{
+    if (r == register_)
+        return;
+    register_ = r;
+    if (sampleRate_ > 0.0)
+        applyHpf();
+    tone_.setRegister(r);
+    deEsser_.setRegister(r);
+    saturator_.setRegister(r);
+    radio_.setRegister(r);
+}
+
 void Engine::updateTargets() noexcept
 {
     inputGain_.setTarget(dsp::dbToGain(parameter(Param::InputGainDb)));
@@ -176,6 +197,7 @@ void Engine::updateTargets() noexcept
     colorMix_.setOn(parameter(Param::ColorEnabled) >= 0.5f);
     tone_.setGains(parameter(Param::ToneBodyDb), parameter(Param::ToneMidDb), parameter(Param::TonePresenceDb),
                    parameter(Param::ToneAirDb));
+    setVoiceRegister(static_cast<dsp::VoiceRegister>(static_cast<int>(parameter(Param::VoiceRegister))));
     compressor_.setAmount(parameter(Param::CompressAmount) / 100.0f);
     deEsser_.setAmount(parameter(Param::ColorDeess) / 100.0f);
     saturator_.setAmount(parameter(Param::ColorSaturate) / 100.0f);

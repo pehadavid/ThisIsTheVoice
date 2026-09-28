@@ -14,10 +14,10 @@ namespace titv::ui {
 
 enum class Language { English, French };
 
-enum class Text { TempoFallback, TempoHost, LanguageHelp, AutoLevelHelp, AutoLevelUndoHelp, PresetHelp,
+enum class Text { TempoFallback, TempoHost, SettingsHelp, AutoLevelHelp, AutoLevelUndoHelp, PresetHelp,
                   UserPresetsHeader, SavePreset, PresetNamePlaceholder, SavePresetHelp, SavePresetReplaceHelp,
                   DeletePresetConfirm, DeletePresetHelp, AboutHelp, AboutBy, AboutFree, AboutLicence,
-                  AboutBuiltWith, AboutClose, Count };
+                  AboutBuiltWith, AboutClose, SettingsTitle, SettingsLanguage, SettingsClose, Count };
 
 inline constexpr std::array<const char*, kParamCount> kHelpFrench = { {
     "Bypass : sortie directe du signal d'origine, sans traitement.", // global_bypass
@@ -51,15 +51,16 @@ inline constexpr std::array<const char*, kParamCount> kHelpFrench = { {
     "Plate : envoi vers la réverbe à plaque.", // space_plate
     "Hall : envoi vers la réverbe de salle.", // space_hall
     "Ambient : envoi vers la réverbe d'ambiance longue.", // space_ambient
+    "Voice : adapte HPF, TONE, De-Ess, Saturate et Radio à une voix d'homme, neutre ou de femme.", // voice_register
 } };
 
 inline constexpr std::array<const char*, static_cast<std::size_t>(Text::Count)> kTextsEnglish = { {
     "%.0f BPM (default)",
     "%.1f BPM",
-    "Language: switch the editor to French.",
+    "Settings: editor language.",
     "Auto Level: listens to 10 s of voice, then sets Input so the meter sits in the target zone. Click again to cancel.",
     "Undo Auto Level: restores the previous Input gain.",
-    "Presets: factory starting points and your own. Input and Bypass stay as they are; * marks a modified preset.",
+    "Presets: factory starting points and your own. Input, Voice and Bypass stay as they are; * marks a modified preset.",
     "USER",
     "+ Save current settings\u2026",
     "Preset name",
@@ -75,15 +76,18 @@ inline constexpr std::array<const char*, static_cast<std::size_t>(Text::Count)> 
     "Built with DPF (ISC, Filipe Coelho), CLAP (MIT), LV2 (ISC), pugl (ISC), NanoVG (zlib) and the DejaVu Sans "
     "font.",
     "Click anywhere to close.",
+    "SETTINGS",
+    "Language",
+    "Click outside the panel or press Esc to close.",
 } };
 
 inline constexpr std::array<const char*, static_cast<std::size_t>(Text::Count)> kTextsFrench = { {
     "%.0f BPM (par défaut)",
     "%.1f BPM",
-    "Langue : passer l'éditeur en anglais.",
+    "Réglages : langue de l'éditeur.",
     "Auto Level : écoute 10 s de voix, puis règle Input pour placer le vumètre dans la zone cible. Un nouveau clic annule.",
     "Annuler Auto Level : rétablit le gain Input précédent.",
-    "Presets : points de départ d'usine et les vôtres. Input et Bypass restent tels quels ; * signale un preset modifié.",
+    "Presets : points de départ d'usine et les vôtres. Input, Voice et Bypass restent tels quels ; * signale un preset modifié.",
     "UTILISATEUR",
     "+ Enregistrer les réglages\u2026",
     "Nom du preset",
@@ -99,6 +103,9 @@ inline constexpr std::array<const char*, static_cast<std::size_t>(Text::Count)> 
     "Construit avec DPF (ISC, Filipe Coelho), CLAP (MIT), LV2 (ISC), pugl (ISC), NanoVG (zlib) et la police "
     "DejaVu Sans.",
     "Cliquer n'importe où pour fermer.",
+    "RÉGLAGES",
+    "Langue",
+    "Cliquer hors du panneau ou Échap pour fermer.",
 } };
 
 inline const char* helpText(Param p, Language lang)

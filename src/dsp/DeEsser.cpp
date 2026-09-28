@@ -19,12 +19,30 @@ void DeEsser::prepare(double sampleRate)
     sampleRate_ = sampleRate;
     const double controlRate = sampleRate / kControlInterval;
     amount_.prepare(kAmountSmoothingSeconds, controlRate);
-    detectorHighPass_.setCoeffs(BiquadCoeffs::highPass(kDetectorHighPassHz, 0.707, sampleRate));
-    detector_.setCoeffs(BiquadCoeffs::bandPass(kFrequencyHz, kDetectorQ, sampleRate));
+    applyDetector();
     bandEnv_.prepare(kDetectorAttackSeconds, kDetectorReleaseSeconds, sampleRate);
     fullEnv_.prepare(kDetectorAttackSeconds, kDetectorReleaseSeconds, sampleRate);
     reduction_.prepare(kReductionAttackSeconds, kReductionReleaseSeconds, controlRate);
     reset();
+}
+
+void DeEsser::applyDetector() noexcept
+{
+    static_assert(kRegisterTunings[1].deEssHz == kFrequencyHz
+                  && kRegisterTunings[1].deEssDetectorHighPassHz == kDetectorHighPassHz);
+    const RegisterTuning& t = tuning(register_);
+    frequencyHz_ = t.deEssHz;
+    detectorHighPass_.setCoeffs(BiquadCoeffs::highPass(t.deEssDetectorHighPassHz, 0.707, sampleRate_));
+    detector_.setCoeffs(BiquadCoeffs::bandPass(t.deEssHz, kDetectorQ, sampleRate_));
+}
+
+void DeEsser::setRegister(VoiceRegister r) noexcept
+{
+    if (r == register_)
+        return;
+    register_ = r;
+    applyDetector();
+    appliedDb_ = -1.0f; // forces the cut to be recomputed at the new frequency
 }
 
 void DeEsser::reset() noexcept
@@ -59,7 +77,7 @@ void DeEsser::updateGain() noexcept
     if (std::fabs(reduction - appliedDb_) >= 0.01f || (reduction == 0.0f && appliedDb_ != 0.0f)) {
         appliedDb_ = reduction < 0.01f ? 0.0f : reduction;
         const BiquadCoeffs c = appliedDb_ == 0.0f ? BiquadCoeffs {}
-                                                  : BiquadCoeffs::peaking(kFrequencyHz, kCutQ, -appliedDb_, sampleRate_);
+                                                  : BiquadCoeffs::peaking(frequencyHz_, kCutQ, -appliedDb_, sampleRate_);
         for (Biquad& f : cut_) {
             f.setCoeffs(c);
             // Below 0.01 dB the residual state is negligible; clearing it lets the

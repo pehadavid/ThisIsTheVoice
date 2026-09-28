@@ -37,6 +37,9 @@ VST3 comes from the same code and passes Steinberg's validator, Audio Unit cover
 
 Input, tone, compression, colour, space and output, in the order you'd patch them, on one screen. Every control is where you expect it, the effect sections switch off in a click, and every knob tells you what it does the moment you hover it.
 
+**Tuned to your voice.**
+A single switch, Male, Neutral or Female, moves the processing to the pitch and sibilance range of the singer: the low cut protects a deep fundamental or trims more rumble under a high voice, the tone bands follow, and De-Ess targets the right "s". Presets never touch it, so it stays set for the singer.
+
 **One knob. All the compression.**
 COMPRESS blends gentle parallel compression, a firmer serial stage and a peak limiter behind a single macro. Turn it up and the voice comes forward, while the output level stays put, so what you hear is the effect, not just "louder".
 
