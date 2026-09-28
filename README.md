@@ -27,13 +27,13 @@ This Is The Voice adds none. Every module was designed to work on the sample it 
 
 So put it on the track you are recording, turn on input monitoring and sing through the full chain, compression, echo and reverbs included, exactly as it will sound in the mix.
 
-## CLAP first.
+## CLAP first
 
 [CLAP](https://cleveraudio.org) is the open, royalty-free plugin standard, and it is the format This Is The Voice is built and tested for first: every build runs the official clap-validator on Linux, macOS and Windows. If your host speaks CLAP (Bitwig Studio, Reaper, FL Studio, Studio One and more), load the CLAP version.
 
 VST3 comes from the same code and passes Steinberg's validator, Audio Unit covers Logic Pro and GarageBand, and LV2 serves Linux hosts.
 
-## Everything a vocal needs. Nothing it doesn't.
+## Everything a vocal needs
 
 Input, tone, compression, colour, space and output, in the order you'd patch them, on one screen. Every control is where you expect it, the effect sections switch off in a click, and every knob tells you what it does the moment you hover it.
 
@@ -52,17 +52,17 @@ A tempo-synced echo and four reverbs: Room, Plate, Hall and Ambient. While you s
 **The right level in ten seconds.**
 Press Auto and sing. Auto Level listens to ten seconds of actual voice, ignoring silences and clicks, and sets the input for you. Changed your mind? One click brings the old gain back.
 
-## Start from a sound. Make it yours.
+## Start from a sound. Make it yours
 
 Seven factory presets (Natural Voice, Dense Lead, Wide Backing, Spoken Word, Ad-Lib, Ambience and a neutral Init), each levelled so that switching between them compares sounds, not volumes. Save your own in a click; they follow you into every project.
 
 <p align="center"><img src="assets/screenshots/presets.png" alt="The preset list, with factory and user presets" width="100%"></p>
 
-## Wherever you make music.
+## Wherever you make music
 
 CLAP and VST3 on Linux, macOS and Windows, Audio Unit on macOS, LV2 on Linux. Intel and Apple Silicon. Resizable to fit any screen, sharp on HiDPI displays.
 
-## Measured, not promised.
+## Measurements
 
 Every graph below was rendered from the plugin's actual audio engine, one control at a time, with everything else set to neutral (HPF off, COMPRESS at 0 %, TONE off, every other knob at 0). Each control is shown at 0 %, 50 % and 100 %.
 
