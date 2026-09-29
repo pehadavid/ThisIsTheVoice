@@ -2,8 +2,14 @@ add_executable(titv_tests main.cpp test_parameters.cpp test_engine.cpp test_dsp.
   test_user_presets.cpp
   ${PROJECT_SOURCE_DIR}/src/ui/Settings.cpp
   ${PROJECT_SOURCE_DIR}/src/ui/UserPresets.cpp
-  ${PROJECT_SOURCE_DIR}/src/ui/PresetBrowser.cpp)
-target_link_libraries(titv_tests PRIVATE titv_engine)
+  ${PROJECT_SOURCE_DIR}/src/ui/PresetBrowser.cpp
+  ${PROJECT_SOURCE_DIR}/src/ui/UpdateCheck.cpp
+  ${PROJECT_SOURCE_DIR}/src/ui/HttpGet.cpp)
+find_package(Threads REQUIRED)
+target_link_libraries(titv_tests PRIVATE titv_engine Threads::Threads)
+if(WIN32)
+  target_link_libraries(titv_tests PRIVATE winhttp)
+endif()
 target_compile_options(titv_tests PRIVATE ${TITV_WARNINGS})
 add_test(NAME engine COMMAND titv_tests)
 

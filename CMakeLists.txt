@@ -14,6 +14,10 @@ set(TITV_BASE_VERSION 0.9.0)
 set(TITV_VERSION "" CACHE STRING "Version to build (default: TITV_BASE_VERSION)")
 # Full version shown in the editor, e.g. 0.9.1-dev.42 for a development build.
 set(TITV_VERSION_LABEL "" CACHE STRING "Version shown in the editor (default: the version built)")
+# Release channel the build follows for update checks: stable (built from main), dev
+# (built from dev) or local (anything else: never checks). Set by CI.
+set(TITV_CHANNEL "local" CACHE STRING "Update channel: stable, dev or local")
+set_property(CACHE TITV_CHANNEL PROPERTY STRINGS stable dev local)
 if(TITV_VERSION)
   set(titv_project_version "${TITV_VERSION}")
 else()
@@ -128,7 +132,9 @@ if(TITV_BUILD_PLUGIN)
       src/ui/OpenUrl.cpp
       src/ui/Settings.cpp
       src/ui/UserPresets.cpp
-      src/ui/PresetBrowser.cpp)
+      src/ui/PresetBrowser.cpp
+      src/ui/UpdateCheck.cpp
+      src/ui/HttpGet.cpp)
 
   target_include_directories(ThisIsTheVoice PUBLIC src src/plugin src/ui)
   # Version reported to hosts, from project(VERSION ...), and the full label shown
@@ -137,10 +143,13 @@ if(TITV_BUILD_PLUGIN)
     TITV_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
     TITV_VERSION_MINOR=${PROJECT_VERSION_MINOR}
     TITV_VERSION_PATCH=${PROJECT_VERSION_PATCH}
-    TITV_VERSION_LABEL="${titv_version_label}")
-  target_link_libraries(ThisIsTheVoice PUBLIC titv_engine)
+    TITV_VERSION_LABEL="${titv_version_label}"
+    TITV_CHANNEL="${TITV_CHANNEL}")
+  find_package(Threads REQUIRED) # the update check runs on its own thread
+  target_link_libraries(ThisIsTheVoice PUBLIC titv_engine Threads::Threads)
   if(WIN32)
-    target_link_libraries(ThisIsTheVoice PUBLIC shell32) # ShellExecute, for the link in the about panel
+    # ShellExecute, for the link in the about panel; WinHTTP, for the update check.
+    target_link_libraries(ThisIsTheVoice PUBLIC shell32 winhttp)
   endif()
 endif()
 
