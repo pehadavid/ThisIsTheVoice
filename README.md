@@ -145,7 +145,24 @@ When the editor opens, the plugin checks GitHub for a newer build and, if there 
 
 The macOS and Windows files are not signed by an identified developer. On macOS, the install script needs nothing more: it clears the quarantine flag macOS puts on downloaded files. The `.pkg` has to be allowed first in System Settings > Privacy & Security > Open Anyway. On Windows, SmartScreen shows More info, then Run anyway.
 
-Yes, your OS will warn you. Apple and Microsoft each want a yearly fee for the privilege of not being treated as a suspect, and this is a free plugin released under the MIT licence: it will not pay a toll to be allowed to run on your own computer. The whole source is here, the builds come from public CI, and you are welcome to compile it yourself if you trust a padlock more than a repository.
+```text
++------------------------------------------------------------------+
+|  T H I S   I S   T H E   V O I C E        [ NFO ]                |
++------------------------------------------------------------------+
+|  SIGNED BY APPLE ........... NO        (99 USD/year, keep it)    |
+|  SIGNED BY MICROSOFT ....... NO        (rent-a-padlock, keep it) |
+|  CRACK / KEYGEN / SERIAL ... NOT NEEDED, IT IS MIT               |
+|  NAG SCREEN ................ YES, BUT IT IS YOURS TO CLICK AWAY  |
+|  SOURCE .................... INCLUDED, READ IT, WE DARE YOU      |
++------------------------------------------------------------------+
+|  Your OS will scream. Let it. It screams at every binary that    |
+|  did not pay the toll. macOS: Open Anyway. Windows: More info,   |
+|  Run anyway. Trust the repo, the public CI and your own eyes.    |
+|  Still scared? Compile it yourself and sign it with your heart.  |
++------------------------------------------------------------------+
+|  Greetz to the users who read READMEs. Shouts to nobody else.    |
++------------------------------------------------------------------+
+```
 
 ## Build from source
 
