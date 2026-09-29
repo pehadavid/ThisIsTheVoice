@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // Writes the measured characteristics of the DSP modules as Markdown. Usage:
 //   titv_measure > private/measurements.md
 

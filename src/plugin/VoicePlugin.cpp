@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // DPF adapter: maps the engine's parameter registry, state and audio callback onto
 // DPF, which produces the VST3, CLAP, LV2 and JACK builds.
 
@@ -49,12 +49,13 @@ void VoicePlugin::initParameter(uint32_t index, Parameter& parameter)
         break;
     case titv::ParamKind::Choice: {
         parameter.hints |= kParameterIsInteger;
-        auto* values = new ParameterEnumerationValue[titv::kNoteDivisionCount];
-        for (uint32_t i = 0; i < titv::kNoteDivisionCount; ++i) {
+        const uint32_t count = titv::choiceCount(pi.id);
+        auto* values = new ParameterEnumerationValue[count];
+        for (uint32_t i = 0; i < count; ++i) {
             values[i].value = static_cast<float>(i);
-            values[i].label = titv::kNoteDivisions[i].label;
+            values[i].label = titv::choiceLabel(pi.id, i);
         }
-        parameter.enumValues.count = titv::kNoteDivisionCount;
+        parameter.enumValues.count = count;
         parameter.enumValues.restrictedMode = true;
         parameter.enumValues.values = values;
         break;

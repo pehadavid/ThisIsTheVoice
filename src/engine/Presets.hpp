@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 #pragma once
 
 #include "Parameters.hpp"
@@ -13,7 +13,7 @@ namespace titv {
 // Factory presets: original settings per use case, never named after
 // artists or brands. A preset lists only the values that differ from the registry
 // defaults. It never changes Input, which depends on the source level (Auto Level),
-// nor the host bypass. Output is set so that every preset plays back at about the
+// nor the voice register, which depends on the singer, nor the host bypass. Output is set so that every preset plays back at about the
 // level of Init (within 0.5 dB on the test voice), for fair comparisons.
 //
 // The id is saved in the project state: never change an existing one.
@@ -26,7 +26,7 @@ struct Preset {
 
 inline constexpr bool presetControls(Param p) noexcept
 {
-    return p != Param::InputGainDb && p != Param::GlobalBypass;
+    return p != Param::InputGainDb && p != Param::VoiceRegister && p != Param::GlobalBypass;
 }
 
 inline const std::array<Preset, 7> kPresets = { {

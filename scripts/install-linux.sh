@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 #
 # Builds this checkout and installs the plugin for the current user:
 #   VST3 -> ~/.vst3   CLAP -> ~/.clap   LV2 -> ~/.lv2   standalone -> ~/.local/bin

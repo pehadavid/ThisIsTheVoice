@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 #pragma once
 
 // Plugin identity. BRAND_ID, UNIQUE_ID, CLAP_ID and URI identify the plugin in saved

@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 #pragma once
 
 #include "Strings.hpp"
 
 #include <filesystem>
+#include <string>
 
 namespace titv::ui {
 
@@ -14,6 +15,17 @@ namespace titv::ui {
 // Called from the UI thread only; a missing or unreadable file gives the defaults.
 Language loadLanguage();
 void saveLanguage(Language lang);
+
+// Update check: on by default, opt-out. The result is remembered so that opening an
+// editor does not ask GitHub every time (its API allows few requests per address).
+struct UpdateState {
+    bool enabled = true;
+    long long checkedAt = 0; // Unix time of the last answer from GitHub
+    std::string found;       // id of the newer build it reported ("" when up to date)
+    std::string skipped;     // id of the build the user chose to ignore
+};
+UpdateState loadUpdateState();
+void saveUpdateState(const UpdateState& state);
 
 // The user's configuration folder for the plugin (empty if it cannot be determined).
 std::filesystem::path configDirectory();

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 #
 # Runs the plugin validators on a build, on Linux, macOS or Windows (Git Bash):
 #   clap-validator on the CLAP plugin, pluginval (strictness 10) on the VST3 plugin.

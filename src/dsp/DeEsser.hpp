@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 #pragma once
 
 #include "Biquad.hpp"
 #include "Envelope.hpp"
 #include "Smoother.hpp"
+#include "VoiceRegister.hpp"
 
 #include <array>
 #include <atomic>
@@ -35,6 +36,8 @@ public:
     void reset() noexcept;
 
     void setAmount(float amount01) noexcept { amount_.setTarget(amount01); }
+    // Moves the detector and the cut to the sibilance range of the voice register.
+    void setRegister(VoiceRegister r) noexcept;
     void process(float* left, float* right, uint32_t frames) noexcept;
 
     // Current reduction in dB (>= 0), readable from any thread.
@@ -42,9 +45,12 @@ public:
 
 private:
     void updateGain() noexcept;
+    void applyDetector() noexcept;
 
-    double sampleRate_ = 48000.0;
+    double sampleRate_ = kDefaultSampleRate;
     uint32_t countdown_ = 0;
+    VoiceRegister register_ = VoiceRegister::Neutral;
+    double frequencyHz_ = kFrequencyHz;
     Smoother amount_;
     Biquad detectorHighPass_, detector_;
     EnvelopeFollower bandEnv_, fullEnv_, reduction_;

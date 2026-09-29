@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 #include "EngineHelpers.hpp"
 #include "TestHarness.hpp"
 
@@ -100,6 +100,28 @@ TEST(hpf_cascade_matches_design)
             CHECK_NEAR(measured, hpfCascadeDb(f, fs), 0.05);
         }
     }
+}
+
+// The voice register moves the HPF with the voice: the dry path follows the tuning table.
+TEST(voice_register_moves_hpf)
+{
+    for (uint32_t r = 0; r < 3; ++r) {
+        const dsp::RegisterTuning& t = dsp::kRegisterTunings[r];
+        for (double f : { 60.0, 100.0, 150.0 }) {
+            Engine e;
+            prepare(e);
+            e.setParameter(Param::VoiceRegister, static_cast<float>(r));
+            neutral(e);
+            const Buffer in = sine(f, 48000.0, 72000);
+            const Stereo out = render(e, in, &in, fixedBlocks(256));
+            const auto a = dsp::BiquadCoeffs::highPass(t.inputHpfHz, Engine::kHpfQ, 48000.0);
+            const auto b = dsp::BiquadCoeffs::highPass(t.outputHpfHz, Engine::kHpfQ, 48000.0);
+            const double expected = 20.0 * std::log10(a.magnitudeAt(f, 48000.0) * b.magnitudeAt(f, 48000.0));
+            CHECK_NEAR(20.0 * std::log10(rms(out.l, 24000) / rms(in, 24000)), expected, 0.05);
+        }
+    }
+    // Neutral is the historical tuning.
+    CHECK(info(Param::VoiceRegister).def == static_cast<float>(dsp::VoiceRegister::Neutral));
 }
 
 TEST(output_independent_of_block_size)

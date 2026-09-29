@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 #include "ToneEq.hpp"
 
 #include <algorithm>
@@ -25,9 +25,7 @@ void ToneEq::prepare(double sampleRate)
     sampleRate_ = sampleRate;
     const double controlRate = sampleRate / kControlInterval;
 
-    for (size_t i = 0; i < kColorCurve.size(); ++i)
-        for (Biquad& f : color_[i])
-            f.setCoeffs(colorCoeffs(kColorCurve[i], sampleRate));
+    applyColorCurve();
 
     for (Smoother& g : gains_)
         g.prepare(kGainSmoothingSeconds, controlRate);
@@ -37,6 +35,33 @@ void ToneEq::prepare(double sampleRate)
     fullEnv_.prepare(kDetectorAttackSeconds, kDetectorReleaseSeconds, sampleRate);
     airReduction_.prepare(kAirReductionAttackSeconds, kAirReductionReleaseSeconds, controlRate);
     reset();
+}
+
+void ToneEq::applyColorCurve() noexcept
+{
+    static_assert(kRegisterTunings[1].colorDipHz == kColorCurve[0].freq
+                  && kRegisterTunings[1].colorPresenceHz == kColorCurve[1].freq);
+    const RegisterTuning& t = tuning(register_);
+    for (size_t i = 0; i < kColorCurve.size(); ++i) {
+        ColorBand b = kColorCurve[i];
+        if (i == 0)
+            b.freq = t.colorDipHz;
+        else if (i == 1)
+            b.freq = t.colorPresenceHz;
+        for (Biquad& f : color_[i])
+            f.setCoeffs(colorCoeffs(b, sampleRate_));
+    }
+}
+
+void ToneEq::setRegister(VoiceRegister r) noexcept
+{
+    static_assert(kRegisterTunings[1].bodyHz == kBody.freq && kRegisterTunings[1].midHz == kMid.freq
+                  && kRegisterTunings[1].presenceHz == kPresence.freq);
+    if (r == register_)
+        return;
+    register_ = r;
+    applyColorCurve();
+    appliedDb_.fill(std::nanf("")); // recompute the bands on the next control tick ? 
 }
 
 void ToneEq::reset() noexcept
@@ -89,11 +114,12 @@ void ToneEq::updateCoefficients() noexcept
             bands_[i][1].reset();
         }
         bandActive_[i] = active;
+        const RegisterTuning& t = tuning(register_);
         BiquadCoeffs c;
         switch (i) {
-        case 0: c = BiquadCoeffs::lowShelf(kBody.freq, kBody.q, db[i], sampleRate_); break;
-        case 1: c = BiquadCoeffs::peaking(kMid.freq, kMid.q, db[i], sampleRate_); break;
-        case 2: c = BiquadCoeffs::peaking(kPresence.freq, kPresence.q, db[i], sampleRate_); break;
+        case 0: c = BiquadCoeffs::lowShelf(t.bodyHz, kBody.q, db[i], sampleRate_); break;
+        case 1: c = BiquadCoeffs::peaking(t.midHz, kMid.q, db[i], sampleRate_); break;
+        case 2: c = BiquadCoeffs::peaking(t.presenceHz, kPresence.q, db[i], sampleRate_); break;
         default: c = BiquadCoeffs::highShelf(kAir.freq, kAir.q, db[i], sampleRate_); break;
         }
         bands_[i][0].setCoeffs(c);

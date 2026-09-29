@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 #pragma once
 
 #include "Parameters.hpp"
@@ -93,6 +93,9 @@ public:
 
     static float clampToRange(Param p, float value) noexcept;
 
+    // Tunes HPF, TONE, De-Ess, Saturate and Radio to the voice register.
+    void setVoiceRegister(dsp::VoiceRegister r) noexcept;
+
 private:
     void processChunk(const float* const* inputs, uint32_t numInputs,
                       float* const* outputs, uint32_t numOutputs,
@@ -120,6 +123,8 @@ private:
     uint32_t slowRampSamplesLeft_ = 0;
 
     std::array<dsp::Biquad, kChannels> inputHpf_, outputHpf_;
+    dsp::VoiceRegister register_ = dsp::VoiceRegister::Neutral;
+    void applyHpf() noexcept;
     dsp::ToneEq tone_;
     dsp::VoiceCompressor compressor_;
     dsp::DeEsser deEsser_;

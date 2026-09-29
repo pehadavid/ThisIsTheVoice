@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // Processing-time benchmark: time per process() call as a share of the
 // block duration, for one instance. Usage: titv_bench [seconds-per-config]
 

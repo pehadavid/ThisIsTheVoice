@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 #include "ColorEffects.hpp"
 
 #include <cmath>
@@ -21,12 +21,23 @@ double Saturator::logCosh(double u) noexcept
 
 void Saturator::prepare(double sampleRate)
 {
+    sampleRate_ = sampleRate;
     amount_.prepare(kAmountSmoothingSeconds, sampleRate);
     for (Channel& c : ch_) {
-        c.pre.setCoeffs(BiquadCoeffs::highPass(kPreHighPassHz, 0.707, sampleRate));
+        c.pre.setCoeffs(BiquadCoeffs::highPass(tuning(register_).saturatePreHighPassHz, 0.707, sampleRate));
         c.post.setCoeffs(BiquadCoeffs::lowPass(kPostLowPassHz, 0.707, sampleRate));
     }
     reset();
+}
+
+void Saturator::setRegister(VoiceRegister r) noexcept
+{
+    static_assert(kRegisterTunings[1].saturatePreHighPassHz == kPreHighPassHz);
+    if (r == register_)
+        return;
+    register_ = r;
+    for (Channel& c : ch_)
+        c.pre.setCoeffs(BiquadCoeffs::highPass(tuning(r).saturatePreHighPassHz, 0.707, sampleRate_));
 }
 
 void Saturator::reset() noexcept
@@ -93,15 +104,33 @@ void Saturator::process(float* left, float* right, uint32_t frames) noexcept
 
 void Radio::prepare(double sampleRate)
 {
+    sampleRate_ = sampleRate;
     amount_.prepare(kAmountSmoothingSeconds, sampleRate);
+    applyLowEdge();
     for (auto& f : filters_) {
-        f[0].setCoeffs(BiquadCoeffs::highPass(kLowHz, 0.707, sampleRate));
-        f[1].setCoeffs(BiquadCoeffs::highPass(kLowHz, 0.707, sampleRate));
         f[2].setCoeffs(BiquadCoeffs::lowPass(kHighHz, 0.707, sampleRate));
         f[3].setCoeffs(BiquadCoeffs::lowPass(kHighHz, 0.707, sampleRate));
         f[4].setCoeffs(BiquadCoeffs::peaking(kBumpHz, 1.2, kBumpDb, sampleRate));
     }
     reset();
+}
+
+void Radio::applyLowEdge() noexcept
+{
+    static_assert(kRegisterTunings[1].radioLowHz == kLowHz);
+    const auto c = BiquadCoeffs::highPass(tuning(register_).radioLowHz, 0.707, sampleRate_);
+    for (auto& f : filters_) {
+        f[0].setCoeffs(c);
+        f[1].setCoeffs(c);
+    }
+}
+
+void Radio::setRegister(VoiceRegister r) noexcept
+{
+    if (r == register_)
+        return;
+    register_ = r;
+    applyLowEdge();
 }
 
 void Radio::reset() noexcept

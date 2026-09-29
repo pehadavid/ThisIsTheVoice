@@ -46,18 +46,22 @@ jobs:
       version: ${{ steps.v.outputs.version }}
       label: ${{ steps.v.outputs.label }}
       channel: ${{ steps.v.outputs.channel }}
+      titvChannel: ${{ steps.v.outputs.titv_channel }}
     steps:
       - uses: actions/checkout@v4
       - id: v
         run: |
           version="$(scripts/ci/version.sh)"
           channel=none
+          titv_channel=local
           label="$version"
           if [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF" = refs/heads/dev ]; then
             channel=dev
+            titv_channel=dev
             label="$version-dev.$GITHUB_RUN_NUMBER"
           elif [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF" = refs/heads/main ]; then
             channel=main
+            titv_channel=stable
             # Already released (a re-run of the same commit): rebuild it, publish nothing.
             existing="$(git ls-remote --tags origin 'v*' | awk -v sha="$GITHUB_SHA" '$1 == sha { sub("refs/tags/", "", $2); sub("\\^\\{\\}", "", $2); print $2 }' | head -1)"
             if [ -n "$existing" ]; then
@@ -69,6 +73,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "label=$label" >> "$GITHUB_OUTPUT"
           echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "titv_channel=$titv_channel" >> "$GITHUB_OUTPUT"
           echo "Version $version, files $label, channel $channel"
 
   linux:
@@ -87,7 +92,7 @@ jobs:
 
       - name: Build
         run: |
-          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DTITV_VERSION=${{ needs.version.outputs.version }} -DTITV_VERSION_LABEL=${{ needs.version.outputs.label }}
+          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DTITV_VERSION=${{ needs.version.outputs.version }} -DTITV_VERSION_LABEL=${{ needs.version.outputs.label }} -DTITV_CHANNEL=${{ needs.version.outputs.titvChannel }}
           cmake --build build/release
 
       - name: Tests
@@ -124,7 +129,7 @@ jobs:
 
       - name: Build (universal)
         run: |
-          cmake -S . -B build/macos -G Ninja -DCMAKE_BUILD_TYPE=Release -DTITV_VERSION=${{ needs.version.outputs.version }} -DTITV_VERSION_LABEL=${{ needs.version.outputs.label }}
+          cmake -S . -B build/macos -G Ninja -DCMAKE_BUILD_TYPE=Release -DTITV_VERSION=${{ needs.version.outputs.version }} -DTITV_VERSION_LABEL=${{ needs.version.outputs.label }} -DTITV_CHANNEL=${{ needs.version.outputs.titvChannel }}
           cmake --build build/macos
 
       - name: Tests
@@ -181,7 +186,7 @@ jobs:
 
       - name: Build
         run: |
-          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DTITV_VERSION=${{ needs.version.outputs.version }} -DTITV_VERSION_LABEL=${{ needs.version.outputs.label }}
+          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DTITV_VERSION=${{ needs.version.outputs.version }} -DTITV_VERSION_LABEL=${{ needs.version.outputs.label }} -DTITV_CHANNEL=${{ needs.version.outputs.titvChannel }}
           cmake --build build/release
 
       - name: Tests

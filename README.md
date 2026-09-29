@@ -11,7 +11,7 @@ A complete vocal chain in a single plugin, built for CLAP first.</p>
 
 <p align="center">
   <a href="https://github.com/pehadavid/ThisIsTheVoice/actions/workflows/build.yml"><img src="https://github.com/pehadavid/ThisIsTheVoice/actions/workflows/build.yml/badge.svg" alt="Build status"></a>
-  <img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="GPL-3.0 licence">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT licence">
   <img src="https://img.shields.io/badge/latency-0%20samples-brightgreen" alt="Latency: 0 samples">
   <img src="https://img.shields.io/badge/CLAP-first-orange" alt="CLAP first">
   <img src="https://img.shields.io/badge/also-VST3%20·%20AU%20·%20LV2-lightgrey" alt="Also VST3, AU, LV2">
@@ -36,6 +36,9 @@ VST3 comes from the same code and passes Steinberg's validator, Audio Unit cover
 ## Everything a vocal needs
 
 Input, tone, compression, colour, space and output, in the order you'd patch them, on one screen. Every control is where you expect it, the effect sections switch off in a click, and every knob tells you what it does the moment you hover it.
+
+**Tuned to your voice.**
+A single switch, Male, Neutral or Female, moves the processing to the pitch and sibilance range of the singer: the low cut protects a deep fundamental or trims more rumble under a high voice, the tone bands follow, and De-Ess targets the right "s". Presets never touch it, so it stays set for the singer.
 
 **One knob. All the compression.**
 COMPRESS blends gentle parallel compression, a firmer serial stage and a peak limiter behind a single macro. Turn it up and the voice comes forward, while the output level stays put, so what you hear is the effect, not just "louder".
@@ -136,7 +139,30 @@ Installers for Linux, macOS and Windows are attached to the [latest release](htt
 
 In a host that supports CLAP, pick the CLAP version.
 
+### Update notice
+
+When the editor opens, the plugin checks GitHub for a newer build and, if there is one, shows a small "Update available" notice at the bottom right; clicking it opens the download page, and the cross next to it ignores that version. A build from `main` is only offered newer releases; a build from `dev` is only offered a newer development build. The answer is kept for six hours, so opening many editors sends one request. Builds compiled from source never check. The check can be turned off with the gear button (Settings). On Linux and macOS it uses `curl`, or `wget` if `curl` is missing; with neither, nothing happens.
+
 The macOS and Windows files are not signed by an identified developer. On macOS, the install script needs nothing more: it clears the quarantine flag macOS puts on downloaded files. The `.pkg` has to be allowed first in System Settings > Privacy & Security > Open Anyway. On Windows, SmartScreen shows More info, then Run anyway.
+
+```text
++------------------------------------------------------------------+
+|  T H I S   I S   T H E   V O I C E        [ NFO ]                |
++------------------------------------------------------------------+
+|  SIGNED BY APPLE ........... NO        (99 USD/year, keep it)    |
+|  SIGNED BY MICROSOFT ....... NO        (rent-a-padlock, keep it) |
+|  CRACK / KEYGEN / SERIAL ... NOT NEEDED, IT IS MIT               |
+|  NAG SCREEN ................ YES, BUT IT IS YOURS TO CLICK AWAY  |
+|  SOURCE .................... INCLUDED, READ IT, WE DARE YOU      |
++------------------------------------------------------------------+
+|  Your OS will scream. Let it. It screams at every binary that    |
+|  did not pay the toll. macOS: Open Anyway. Windows: More info,   |
+|  Run anyway. Trust the repo, the public CI and your own eyes.    |
+|  Still scared? Compile it yourself and sign it with your heart.  |
++------------------------------------------------------------------+
+|  Greetz to the users who read READMEs. Shouts to nobody else.    |
++------------------------------------------------------------------+
+```
 
 ## Build from source
 
@@ -185,9 +211,9 @@ The AU format (the only one Logic Pro loads) is built on macOS only. Bundles get
 
 ## License
 
-This Is The Voice is free software, released under the GNU General Public License, version 3 or later: see [LICENSE](LICENSE).
+This Is The Voice is free software, released under the MIT License: see [LICENSE](LICENSE).
 
-It is built with the following third-party components, whose licences are compatible with the GPLv3. Their copyright notices must accompany any distribution.
+It is built with the following third-party components, whose licences are all permissive. Their copyright notices must accompany any distribution.
 
 | Component | Used for | Licence | Copyright |
 | --- | --- | --- | --- |

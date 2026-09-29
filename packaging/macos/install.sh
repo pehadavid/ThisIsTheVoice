@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 #
 # Installs This Is The Voice from this release archive, without the .pkg installer.
 # Run it from Terminal (Gatekeeper does not block a script started with bash):

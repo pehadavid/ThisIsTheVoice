@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 #pragma once
 
 // Minimal test registry: TEST(name) { ... CHECK(cond); CHECK_NEAR(a, b, tol); }

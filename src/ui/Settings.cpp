@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 #include "Settings.hpp"
 
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <string>
 #include <system_error>
 
@@ -52,35 +53,82 @@ fs::path settingsFile()
     return dir.empty() ? dir : dir / "settings.ini";
 }
 
-constexpr const char* kLanguageKey = "language=";
+// The file is a list of key=value lines; unknown keys are kept when it is rewritten.
+using Entries = std::map<std::string, std::string>;
+
+Entries readEntries()
+{
+    Entries entries;
+    const fs::path file = settingsFile();
+    if (file.empty())
+        return entries;
+    std::ifstream in(file);
+    std::string line;
+    while (std::getline(in, line)) {
+        const std::size_t eq = line.find('=');
+        if (eq != std::string::npos && eq > 0)
+            entries[line.substr(0, eq)] = line.substr(eq + 1);
+    }
+    return entries;
+}
+
+void writeEntries(const Entries& entries)
+{
+    const fs::path file = settingsFile();
+    if (file.empty())
+        return;
+    std::error_code ec;
+    fs::create_directories(file.parent_path(), ec);
+    std::ofstream out(file, std::ios::trunc);
+    for (const auto& [key, value] : entries)
+        out << key << '=' << value << '\n';
+}
+
+std::string valueOf(const Entries& entries, const char* key)
+{
+    const auto it = entries.find(key);
+    return it == entries.end() ? std::string() : it->second;
+}
+
+constexpr const char* kLanguageKey = "language";
+constexpr const char* kUpdateCheckKey = "update_check";
+constexpr const char* kUpdateCheckedKey = "update_checked_at";
+constexpr const char* kUpdateFoundKey = "update_found";
+constexpr const char* kUpdateSkippedKey = "update_skipped";
 
 } // namespace
 
 Language loadLanguage()
 {
-    const fs::path file = settingsFile();
-    if (file.empty())
-        return Language::English;
-
-    std::ifstream in(file);
-    std::string line;
-    while (std::getline(in, line))
-        if (line.rfind(kLanguageKey, 0) == 0)
-            return line.substr(std::char_traits<char>::length(kLanguageKey)) == "fr" ? Language::French
-                                                                                  : Language::English;
-    return Language::English;
+    return valueOf(readEntries(), kLanguageKey) == "fr" ? Language::French : Language::English;
 }
 
 void saveLanguage(Language lang)
 {
-    const fs::path file = settingsFile();
-    if (file.empty())
-        return;
+    Entries entries = readEntries();
+    entries[kLanguageKey] = lang == Language::French ? "fr" : "en";
+    writeEntries(entries);
+}
 
-    std::error_code ec;
-    fs::create_directories(file.parent_path(), ec);
-    std::ofstream out(file, std::ios::trunc);
-    out << kLanguageKey << (lang == Language::French ? "fr" : "en") << '\n';
+UpdateState loadUpdateState()
+{
+    const Entries entries = readEntries();
+    UpdateState state;
+    state.enabled = valueOf(entries, kUpdateCheckKey) != "off";
+    state.checkedAt = std::atoll(valueOf(entries, kUpdateCheckedKey).c_str());
+    state.found = valueOf(entries, kUpdateFoundKey);
+    state.skipped = valueOf(entries, kUpdateSkippedKey);
+    return state;
+}
+
+void saveUpdateState(const UpdateState& state)
+{
+    Entries entries = readEntries();
+    entries[kUpdateCheckKey] = state.enabled ? "on" : "off";
+    entries[kUpdateCheckedKey] = std::to_string(state.checkedAt);
+    entries[kUpdateFoundKey] = state.found;
+    entries[kUpdateSkippedKey] = state.skipped;
+    writeEntries(entries);
 }
 
 } // namespace titv::ui

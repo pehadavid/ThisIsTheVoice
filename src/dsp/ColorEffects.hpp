@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 #pragma once
 
 #include "Biquad.hpp"
 #include "DelayLine.hpp"
 #include "Smoother.hpp"
+#include "VoiceRegister.hpp"
 
 #include <array>
 #include <cstdint>
@@ -28,6 +29,8 @@ public:
     void prepare(double sampleRate);
     void reset() noexcept;
     void setAmount(float amount01) noexcept { amount_.setTarget(amount01); }
+    // Moves the pre high-pass with the voice register.
+    void setRegister(VoiceRegister r) noexcept;
     void process(float* left, float* right, uint32_t frames) noexcept;
 
     // tanh antiderivative, log(cosh(u)), in a form that does not overflow.
@@ -41,6 +44,8 @@ private:
         float previousClean = 0.0f;
         float process(float x, float drive) noexcept;
     };
+    double sampleRate_ = kDefaultSampleRate;
+    VoiceRegister register_ = VoiceRegister::Neutral;
     Smoother amount_;
     float driveAmount_ = -1.0f, drive_ = 1.0f;
     bool idle_ = true;
@@ -58,9 +63,15 @@ public:
     void prepare(double sampleRate);
     void reset() noexcept;
     void setAmount(float amount01) noexcept { amount_.setTarget(amount01); }
+    // Moves the low edge of the band with the voice register.
+    void setRegister(VoiceRegister r) noexcept;
     void process(float* left, float* right, uint32_t frames) noexcept;
 
 private:
+    void applyLowEdge() noexcept;
+
+    double sampleRate_ = kDefaultSampleRate;
+    VoiceRegister register_ = VoiceRegister::Neutral;
     Smoother amount_;
     bool idle_ = true;
     std::array<std::array<Biquad, 5>, 2> filters_;
@@ -88,7 +99,7 @@ public:
     void process(float* left, float* right, uint32_t frames) noexcept;
 
 private:
-    double sampleRate_ = 48000.0;
+    double sampleRate_ = kDefaultSampleRate;
     Smoother amount_;
     bool idle_ = true;
     Biquad highPass_, lowPass_;
@@ -114,7 +125,7 @@ public:
     void process(float* left, float* right, uint32_t frames) noexcept;
 
 private:
-    double sampleRate_ = 48000.0;
+    double sampleRate_ = kDefaultSampleRate;
     Smoother amount_;
     std::array<DelayLine, 2> lines_;
     Lfo lfo_;

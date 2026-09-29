@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 #
 # Prints the version of the next release, from the base version in CMakeLists.txt and
 # the release tags that already exist:

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // Editor: five sections between the input and output meters, drawn with NanoVG.
 // Everything is laid out in base units (kWidth x kHeight). The window accepts any
 // size above a minimum; the layout is scaled to fit it, keeping its proportions, and
@@ -9,6 +9,7 @@
 #include "OpenUrl.hpp"
 #include "PresetBrowser.hpp"
 #include "Settings.hpp"
+#include "UpdateCheck.hpp"
 #include "plugin/VoicePlugin.hpp"
 
 #include <algorithm>
@@ -16,6 +17,8 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <ctime>
+#include <optional>
 #include <vector>
 
 START_NAMESPACE_DISTRHO
@@ -73,8 +76,9 @@ constexpr float kSectionTop = 60.0f;
 constexpr float kSectionHeight = 344.0f;
 constexpr float kHelpTop = 412.0f;
 
-// EN | FR switch in the header, right of the title.
-constexpr float kLangX = 226.0f, kLangY = 13.0f, kLangW = 64.0f, kLangH = 24.0f;
+// Voice register switch (Male | Neutral | Female) in the header, right of the title.
+constexpr float kRegisterX = 226.0f, kRegisterY = 13.0f, kRegisterSegmentW = 58.0f, kRegisterH = 24.0f;
+constexpr float kRegisterW = kRegisterSegmentW * static_cast<float>(titv::kVoiceRegisterLabels.size());
 
 // Auto Level buttons, one above the other, centred in the INPUT section (x 16,
 // width 110) and vertically between the bottom of the meter and the top of the
@@ -92,7 +96,7 @@ constexpr float kReductionRangeDb = 20.0f;
 constexpr float kReductionFallDb = 0.6f;
 
 // Preset selector in the header: previous / name (opens the list) / next.
-constexpr float kPresetX = 320.0f, kPresetY = 13.0f, kPresetW = 300.0f, kPresetH = 24.0f;
+constexpr float kPresetX = 420.0f, kPresetY = 13.0f, kPresetW = 300.0f, kPresetH = 24.0f;
 constexpr float kPresetArrowW = 26.0f;
 constexpr float kPresetItemH = 22.0f;
 constexpr float kPresetListTop = kPresetY + kPresetH + 4;
@@ -106,8 +110,25 @@ constexpr float kAboutCx = kWidth - 28.0f, kAboutCy = kHelpTop + 18.0f, kAboutR 
 // child windows badly).
 constexpr float kAboutPanelW = 560.0f, kAboutPanelH = 270.0f;
 
-enum class Button { None, Language, Auto, Undo, PresetPrevious, PresetNext, PresetName, EditConfirm, EditCancel,
-                    About };
+// Settings button: a small gear right after the preset selector. It opens a panel
+// drawn over the editor, like the about panel, holding the EN | FR switch.
+constexpr float kSettingsCx = kPresetX + kPresetW + 22.0f, kSettingsCy = kPresetY + kPresetH / 2, kSettingsR = 11.0f;
+constexpr float kSettingsPanelW = 360.0f, kSettingsPanelH = 190.0f;
+constexpr float kSettingsPanelX = (kWidth - kSettingsPanelW) / 2, kSettingsPanelY = (kHeight - kSettingsPanelH) / 2;
+constexpr float kLangW = 64.0f, kLangH = 24.0f;
+constexpr float kLangX = kSettingsPanelX + kSettingsPanelW - 32.0f - kLangW, kLangY = kSettingsPanelY + 62.0f;
+// Update-check switch (ON | OFF), on the row below the language switch.
+constexpr float kUpdatesX = kLangX, kUpdatesY = kLangY + 40.0f;
+
+// Update notice, on the help line left of the About button: a pill that opens the
+// download page, and a cross that ignores that version.
+constexpr float kNoticeW = 236.0f, kNoticeH = 22.0f, kNoticeCrossW = 24.0f;
+constexpr float kNoticeX = kAboutCx - kAboutR - 14.0f - kNoticeW, kNoticeY = kAboutCy - kNoticeH / 2;
+// A remembered answer from GitHub is trusted this long before asking again.
+constexpr long long kUpdateRecheckSeconds = 6 * 3600;
+
+enum class Button { None, Register, Settings, Auto, Undo, PresetPrevious, PresetNext, PresetName, EditConfirm, EditCancel,
+                    About, Update, UpdateDismiss };
 
 // One line of the preset list.
 struct PresetRow {
@@ -171,6 +192,7 @@ public:
         if (auto* plugin = static_cast<VoicePlugin*>(getPluginInstancePointer()))
             engine_ = &plugin->engine();
         buildLayout();
+        startUpdateCheck();
     }
 
 protected:
@@ -193,6 +215,7 @@ protected:
     // Meters refresh at the host's idle rate (typically 30-60 Hz).
     void uiIdle() override
     {
+        finishUpdateCheck();
         if (engine_ == nullptr)
             return;
 
@@ -236,8 +259,11 @@ protected:
         drawPresetSelector();
         drawHelp();
         drawAboutButton();
+        drawUpdateNotice();
+        drawSettingsButton();
         drawPresetList(); // on top of everything
         drawAbout();
+        drawSettings();
         restore();
     }
 
@@ -262,6 +288,19 @@ protected:
                 titv::ui::openUrl(DISTRHO_PLUGIN_URI);
             else
                 closeAbout();
+            repaint();
+            return true;
+        }
+        // The settings panel: the language switch, a click outside closes it.
+        if (settingsOpen_) {
+            if (inside(x, y, kLangX, kLangY, kLangW, kLangH)) {
+                language_ = language_ == Language::English ? Language::French : Language::English;
+                titv::ui::saveLanguage(language_);
+            } else if (inside(x, y, kUpdatesX, kUpdatesY, kLangW, kLangH)) {
+                toggleUpdateCheck();
+            } else if (!inside(x, y, kSettingsPanelX, kSettingsPanelY, kSettingsPanelW, kSettingsPanelH)) {
+                settingsOpen_ = false;
+            }
             repaint();
             return true;
         }
@@ -304,10 +343,21 @@ protected:
             hovered_ = nullptr;
             repaint();
             return true;
-        case Button::Language:
-            language_ = language_ == Language::English ? Language::French : Language::English;
-            titv::ui::saveLanguage(language_);
+        case Button::Update:
+            if (update_)
+                titv::ui::openUrl(update_->url.c_str());
+            return true;
+        case Button::UpdateDismiss:
+            skipUpdate();
+            return true;
+        case Button::Settings:
+            settingsOpen_ = true;
+            hovered_ = nullptr;
+            hoveredButton_ = Button::None;
             repaint();
+            return true;
+        case Button::Register:
+            commit(Param::VoiceRegister, static_cast<float>(registerSegmentAt(x)));
             return true;
         case Button::Auto:
             // A click while listening cancels.
@@ -370,6 +420,8 @@ protected:
             return true;
         }
 
+        if (settingsOpen_)
+            return false;
         if (aboutOpen_) {
             const bool overLinkNow = overLink(x, y);
             if (overLinkNow != hoveredLink_) {
@@ -383,7 +435,10 @@ protected:
         const Button button = buttonAt(x, y);
         const int row = presetListOpen_ ? presetRowAt(x, y) : -1;
         const bool overDelete = row >= 0 && x >= kPresetX + kPresetW - kDeleteZoneW;
-        if (hovered != hovered_ || button != hoveredButton_ || row != hoveredRow_ || overDelete != hoveredDelete_) {
+        const int segment = button == Button::Register ? registerSegmentAt(x) : -1;
+        if (hovered != hovered_ || button != hoveredButton_ || row != hoveredRow_ || overDelete != hoveredDelete_ ||
+            segment != hoveredSegment_) {
+            hoveredSegment_ = segment;
             hovered_ = presetListOpen_ ? nullptr : hovered;
             hoveredButton_ = button;
             hoveredRow_ = row;
@@ -395,7 +450,7 @@ protected:
 
     bool onScroll(const ScrollEvent& ev) override
     {
-        if (aboutOpen_)
+        if (aboutOpen_ || settingsOpen_)
             return true;
         if (presetListOpen_) {
             const int maxScroll = std::max(0, static_cast<int>(rows_.size()) - kPresetListMaxRows);
@@ -436,6 +491,11 @@ protected:
     {
         if (aboutOpen_ && ev.press && ev.key == kKeyEscape) {
             closeAbout();
+            repaint();
+            return true;
+        }
+        if (settingsOpen_ && ev.press && ev.key == kKeyEscape) {
+            settingsOpen_ = false;
             repaint();
             return true;
         }
@@ -621,22 +681,34 @@ private:
             text(kWidth - 212.0f, 25, buf, nullptr);
         }
 
+        drawRegisterSwitch();
+    }
+
+    static int registerSegmentAt(float x)
+    {
+        const int last = static_cast<int>(titv::kVoiceRegisterLabels.size()) - 1;
+        return std::clamp(static_cast<int>((x - kRegisterX) / kRegisterSegmentW), 0, last);
+    }
+
+    void drawRegisterSwitch()
+    {
         beginPath();
-        roundedRect(kLangX, kLangY, kLangW, kLangH, kLangH / 2);
+        roundedRect(kRegisterX, kRegisterY, kRegisterW, kRegisterH, kRegisterH / 2);
         fillColor(kColors.track);
         fill();
-        const bool french = language_ == Language::French;
-        const float half = kLangW / 2;
+        const int selected = static_cast<int>(value(Param::VoiceRegister));
         beginPath();
-        roundedRect(kLangX + (french ? half : 0.0f), kLangY, half, kLangH, kLangH / 2);
-        fillColor(kColors.textDim);
+        roundedRect(kRegisterX + kRegisterSegmentW * static_cast<float>(selected), kRegisterY, kRegisterSegmentW,
+                    kRegisterH, kRegisterH / 2);
+        fillColor(kColors.accent);
         fill();
         fontSize(11);
         textAlign(ALIGN_CENTER | ALIGN_MIDDLE);
-        fillColor(french ? kColors.textDim : kColors.background);
-        text(kLangX + half / 2, kLangY + kLangH / 2 + 1, "EN", nullptr);
-        fillColor(french ? kColors.background : kColors.textDim);
-        text(kLangX + half * 1.5f, kLangY + kLangH / 2 + 1, "FR", nullptr);
+        for (int i = 0; i < static_cast<int>(titv::kVoiceRegisterLabels.size()); ++i) {
+            fillColor(i == selected ? kColors.background : i == hoveredSegment_ ? kColors.accent : kColors.textDim);
+            text(kRegisterX + kRegisterSegmentW * (static_cast<float>(i) + 0.5f), kRegisterY + kRegisterH / 2 + 1,
+                 titv::kVoiceRegisterLabels[static_cast<size_t>(i)], nullptr);
+        }
     }
 
     void drawSection(const Section& s)
@@ -788,8 +860,10 @@ private:
 
     Button buttonAt(float x, float y) const
     {
-        if (inside(x, y, kLangX, kLangY, kLangW, kLangH))
-            return Button::Language;
+        if (inside(x, y, kRegisterX, kRegisterY, kRegisterW, kRegisterH))
+            return Button::Register;
+        if (inside(x, y, kSettingsCx - kSettingsR, kSettingsCy - kSettingsR, 2 * kSettingsR, 2 * kSettingsR))
+            return Button::Settings;
         if (editingName_) {
             if (inside(x, y, kPresetX + kPresetW - 2 * kEditButtonW, kPresetY, kEditButtonW, kPresetH))
                 return Button::EditConfirm;
@@ -806,6 +880,12 @@ private:
             return Button::PresetName;
         if (inside(x, y, kAboutCx - kAboutR, kAboutCy - kAboutR, 2 * kAboutR, 2 * kAboutR))
             return Button::About;
+        if (noticeShown()) {
+            if (inside(x, y, kNoticeX + kNoticeW - kNoticeCrossW, kNoticeY, kNoticeCrossW, kNoticeH))
+                return Button::UpdateDismiss;
+            if (inside(x, y, kNoticeX, kNoticeY, kNoticeW - kNoticeCrossW, kNoticeH))
+                return Button::Update;
+        }
         if (engine_ == nullptr)
             return Button::None;
         if (inside(x, y, kAutoX, autoY(), kAutoW, kAutoH))
@@ -1161,14 +1241,20 @@ private:
         else if (hoveredButton_ == Button::PresetPrevious || hoveredButton_ == Button::PresetNext ||
                  hoveredButton_ == Button::PresetName || presetListOpen_)
             help = titv::ui::text(Text::PresetHelp, language_);
-        else if (hoveredButton_ == Button::Language)
-            help = titv::ui::text(Text::LanguageHelp, language_);
+        else if (hoveredButton_ == Button::Register)
+            help = titv::ui::helpText(Param::VoiceRegister, language_);
+        else if (hoveredButton_ == Button::Settings)
+            help = titv::ui::text(Text::SettingsHelp, language_);
         else if (hoveredButton_ == Button::Auto)
             help = titv::ui::text(Text::AutoLevelHelp, language_);
         else if (hoveredButton_ == Button::Undo)
             help = titv::ui::text(Text::AutoLevelUndoHelp, language_);
         else if (hoveredButton_ == Button::About)
             help = titv::ui::text(Text::AboutHelp, language_);
+        else if (hoveredButton_ == Button::Update)
+            help = titv::ui::text(Text::UpdateHelp, language_);
+        else if (hoveredButton_ == Button::UpdateDismiss)
+            help = titv::ui::text(Text::UpdateDismissHelp, language_);
         if (help == nullptr)
             return;
         fontFace(NANOVG_DEJAVU_SANS_TTF);
@@ -1265,6 +1351,206 @@ private:
         text(x + kAboutPanelW / 2, y + kAboutPanelH - 28, titv::ui::text(Text::AboutClose, language_), nullptr);
     }
 
+    // A gear: eight teeth around a ring.
+    void drawSettingsButton()
+    {
+        const bool hot = hoveredButton_ == Button::Settings;
+        const Color c = hot ? kColors.accent : kColors.textDim;
+        beginPath();
+        circle(kSettingsCx, kSettingsCy, kSettingsR);
+        fillColor(kColors.track);
+        fill();
+        fillColor(c);
+        for (int i = 0; i < 8; ++i) {
+            save();
+            translate(kSettingsCx, kSettingsCy);
+            rotate(static_cast<float>(i) * 3.14159265f / 4.0f);
+            beginPath();
+            rect(-1.5f, -7.5f, 3.0f, 3.5f);
+            fill();
+            restore();
+        }
+        beginPath();
+        circle(kSettingsCx, kSettingsCy, 5.0f);
+        fill();
+        beginPath();
+        circle(kSettingsCx, kSettingsCy, 2.0f);
+        fillColor(kColors.track);
+        fill();
+    }
+
+    // --- Update check ----------------------------------------------------------
+
+    static titv::ui::Channel channel() { return titv::ui::channelFromName(TITV_CHANNEL); }
+
+    bool noticeShown() const
+    {
+        return update_ && update_->id != updateState_.skipped;
+    }
+
+    // At most one request per kUpdateRecheckSeconds, shared by every editor (the answer is
+    // kept in the settings file). Builds that do not follow a channel never ask.
+    void startUpdateCheck()
+    {
+        updateState_ = titv::ui::loadUpdateState();
+        if (!updateState_.enabled || channel() == titv::ui::Channel::Local)
+            return;
+        const long long now = static_cast<long long>(std::time(nullptr));
+        if (now - updateState_.checkedAt >= 0 && now - updateState_.checkedAt < kUpdateRecheckSeconds) {
+            update_ = titv::ui::updateFromId(channel(), TITV_VERSION_LABEL, updateState_.found);
+            return;
+        }
+        checker_.start(channel(), TITV_VERSION_LABEL);
+        checking_ = true;
+    }
+
+    void finishUpdateCheck()
+    {
+        if (!checking_ || !checker_.finished())
+            return;
+        checking_ = false;
+        if (!checker_.answered())
+            return; // offline: try again the next time an editor opens
+        update_ = checker_.result();
+        // Another editor may have changed the settings since: start from the file.
+        titv::ui::UpdateState state = titv::ui::loadUpdateState();
+        state.checkedAt = static_cast<long long>(std::time(nullptr));
+        state.found = update_ ? update_->id : std::string();
+        titv::ui::saveUpdateState(state);
+        updateState_ = state;
+        repaint();
+    }
+
+    void skipUpdate()
+    {
+        if (!update_)
+            return;
+        titv::ui::UpdateState state = titv::ui::loadUpdateState();
+        state.skipped = update_->id;
+        titv::ui::saveUpdateState(state);
+        updateState_ = state;
+        hoveredButton_ = Button::None;
+        repaint();
+    }
+
+    void toggleUpdateCheck()
+    {
+        titv::ui::UpdateState state = titv::ui::loadUpdateState();
+        state.enabled = !state.enabled;
+        if (state.enabled)
+            state.checkedAt = 0; // ask again next time
+        titv::ui::saveUpdateState(state);
+        updateState_ = state;
+        if (!state.enabled)
+            update_.reset();
+    }
+
+    void drawUpdateNotice()
+    {
+        if (!noticeShown())
+            return;
+        const bool hotLink = hoveredButton_ == Button::Update, hotCross = hoveredButton_ == Button::UpdateDismiss;
+        beginPath();
+        roundedRect(kNoticeX, kNoticeY, kNoticeW, kNoticeH, kNoticeH / 2);
+        fillColor(kColors.track);
+        fill();
+        strokeColor(hotLink ? kColors.accent : kColors.panelEdge);
+        strokeWidth(1);
+        stroke();
+
+        char buf[96];
+        std::snprintf(buf, sizeof(buf), titv::ui::text(Text::UpdateAvailable, language_), update_->label.c_str());
+        fontFace(NANOVG_DEJAVU_SANS_TTF);
+        fontSize(12);
+        textAlign(ALIGN_CENTER | ALIGN_MIDDLE);
+        fillColor(kColors.accent);
+        text(kNoticeX + (kNoticeW - kNoticeCrossW) / 2, kNoticeY + kNoticeH / 2 + 1, buf, nullptr);
+
+        // The cross that ignores this version.
+        const float cx = kNoticeX + kNoticeW - kNoticeCrossW / 2 - 2, cy = kNoticeY + kNoticeH / 2;
+        beginPath();
+        moveTo(cx - 4, cy - 4);
+        lineTo(cx + 4, cy + 4);
+        moveTo(cx + 4, cy - 4);
+        lineTo(cx - 4, cy + 4);
+        strokeColor(hotCross ? kColors.accent : kColors.textDim);
+        strokeWidth(1.5f);
+        stroke();
+    }
+
+    void drawSettings()
+    {
+        if (!settingsOpen_)
+            return;
+        beginPath();
+        rect(0, 0, kWidth, kHeight);
+        fillColor(Color(0, 0, 0, 0.6f));
+        fill();
+
+        const float x = kSettingsPanelX, y = kSettingsPanelY;
+        beginPath();
+        roundedRect(x, y, kSettingsPanelW, kSettingsPanelH, 10);
+        fillColor(kColors.panel);
+        fill();
+        strokeColor(kColors.panelEdge);
+        strokeWidth(1);
+        stroke();
+
+        fontFace(NANOVG_DEJAVU_SANS_TTF);
+        textAlign(ALIGN_LEFT | ALIGN_TOP);
+        fontSize(16);
+        fillColor(kColors.text);
+        text(x + 32, y + 24, titv::ui::text(Text::SettingsTitle, language_), nullptr);
+
+        textAlign(ALIGN_LEFT | ALIGN_MIDDLE);
+        fontSize(13);
+        text(x + 32, kLangY + kLangH / 2 + 1, titv::ui::text(Text::SettingsLanguage, language_), nullptr);
+
+        // EN | FR switch.
+        beginPath();
+        roundedRect(kLangX, kLangY, kLangW, kLangH, kLangH / 2);
+        fillColor(kColors.track);
+        fill();
+        const bool french = language_ == Language::French;
+        const float half = kLangW / 2;
+        beginPath();
+        roundedRect(kLangX + (french ? half : 0.0f), kLangY, half, kLangH, kLangH / 2);
+        fillColor(kColors.textDim);
+        fill();
+        fontSize(11);
+        textAlign(ALIGN_CENTER | ALIGN_MIDDLE);
+        fillColor(french ? kColors.textDim : kColors.background);
+        text(kLangX + half / 2, kLangY + kLangH / 2 + 1, "EN", nullptr);
+        fillColor(french ? kColors.background : kColors.textDim);
+        text(kLangX + half * 1.5f, kLangY + kLangH / 2 + 1, "FR", nullptr);
+
+        // Update check: ON | OFF switch, only for builds that can check.
+        textAlign(ALIGN_LEFT | ALIGN_MIDDLE);
+        fontSize(13);
+        fillColor(kColors.text);
+        text(x + 32, kUpdatesY + kLangH / 2 + 1, titv::ui::text(Text::SettingsUpdates, language_), nullptr);
+        beginPath();
+        roundedRect(kUpdatesX, kUpdatesY, kLangW, kLangH, kLangH / 2);
+        fillColor(kColors.track);
+        fill();
+        const bool on = updateState_.enabled;
+        beginPath();
+        roundedRect(kUpdatesX + (on ? 0.0f : half), kUpdatesY, half, kLangH, kLangH / 2);
+        fillColor(on ? kColors.accent : kColors.textDim);
+        fill();
+        fontSize(11);
+        textAlign(ALIGN_CENTER | ALIGN_MIDDLE);
+        fillColor(on ? kColors.background : kColors.textDim);
+        text(kUpdatesX + half / 2, kUpdatesY + kLangH / 2 + 1, "ON", nullptr);
+        fillColor(on ? kColors.textDim : kColors.background);
+        text(kUpdatesX + half * 1.5f, kUpdatesY + kLangH / 2 + 1, "OFF", nullptr);
+
+        fontSize(11);
+        textAlign(ALIGN_CENTER | ALIGN_TOP);
+        fillColor(kColors.textDim);
+        text(x + kSettingsPanelW / 2, y + kSettingsPanelH - 28, titv::ui::text(Text::SettingsClose, language_), nullptr);
+    }
+
     titv::Engine* engine_ = nullptr;
     std::array<float, titv::kParamCount> values_ {};
     std::vector<Section> sections_;
@@ -1275,6 +1561,12 @@ private:
     std::vector<PresetRow> rows_;
     bool presetListOpen_ = false;
     bool aboutOpen_ = false;
+    bool settingsOpen_ = false;
+    titv::ui::UpdateState updateState_;
+    titv::ui::UpdateChecker checker_;
+    bool checking_ = false;
+    std::optional<titv::ui::UpdateInfo> update_; // a newer build than this one, if known
+    int hoveredSegment_ = -1; // voice register segment under the mouse
     bool hoveredLink_ = false;
     struct { float x, y, w, h; } linkBox_ {}; // set when the panel is drawn
     int listScroll_ = 0;

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 #pragma once
 
 #include <array>
@@ -44,6 +44,7 @@ enum class Param : uint32_t {
     SpacePlate,
     SpaceHall,
     SpaceAmbient,
+    VoiceRegister,
     Count
 };
 
@@ -83,6 +84,21 @@ inline constexpr std::array<NoteDivision, kNoteDivisionCount> kNoteDivisions = {
     { "1/1", 4.0 },    { "1/1T", 4.0 * 2.0 / 3.0 },    { "1/1D", 4.0 * 1.5 },
     { "2/1", 8.0 },    { "2/1T", 8.0 * 2.0 / 3.0 },    { "2/1D", 8.0 * 1.5 },
 } };
+
+// Voice register choices; the index is the stored value (Male 0, Neutral 1, Female 2).
+inline constexpr std::array<const char*, 3> kVoiceRegisterLabels = { { "Male", "Neutral", "Female" } };
+inline constexpr uint32_t kVoiceRegisterDefault = 1; // Neutral: the original tuning
+
+// Labels of a Choice parameter, in value order.
+constexpr uint32_t choiceCount(Param p) noexcept
+{
+    return p == Param::VoiceRegister ? static_cast<uint32_t>(kVoiceRegisterLabels.size()) : kNoteDivisionCount;
+}
+
+constexpr const char* choiceLabel(Param p, uint32_t i) noexcept
+{
+    return p == Param::VoiceRegister ? kVoiceRegisterLabels[i] : kNoteDivisions[i].label;
+}
 
 inline constexpr double kFallbackTempoBpm = 120.0;
 
@@ -157,6 +173,9 @@ inline constexpr std::array<ParamInfo, kParamCount> kParams = { {
       "Hall: send to the hall reverb." },
     { Param::SpaceAmbient, "space_ambient", "Ambient", "Ambient", "%", K::Continuous, 0, 100, 0,
       "Ambient: send to the long ambient reverb." },
+    { Param::VoiceRegister, "voice_register", "Voice Register", "Voice", "", K::Choice, 0,
+      static_cast<float>(kVoiceRegisterLabels.size() - 1), static_cast<float>(kVoiceRegisterDefault),
+      "Voice: tunes HPF, TONE, De-Ess, Saturate and Radio to a male, neutral or female voice." },
 } };
 
 constexpr const ParamInfo& info(Param p) noexcept { return kParams[index(p)]; }
@@ -174,7 +193,7 @@ inline constexpr std::array<Param, kParamCount> kDisplayOrder = { {
     Param::SpaceRoom, Param::SpaceHall, Param::SpaceAmbient,
     Param::HpfEnabled, Param::ToneEnabled, Param::ColorEnabled, Param::EchoEnabled, Param::SpaceEnabled,
     Param::SpaceRoomEnabled, Param::SpacePlateEnabled, Param::SpaceHallEnabled, Param::SpaceAmbientEnabled,
-    Param::GlobalBypass,
+    Param::VoiceRegister, Param::GlobalBypass,
 } };
 
 // Remote controls pages (CLAP remote-controls extension): what a hardware
@@ -202,7 +221,7 @@ inline constexpr std::array<ControlPage, 6> kControlPages = { {
                           Param::SpaceRoomEnabled, Param::SpacePlateEnabled, Param::SpaceHallEnabled,
                           Param::SpaceAmbientEnabled } },
     { "Switches", "Switches", { Param::GlobalBypass, Param::HpfEnabled, Param::ToneEnabled, Param::ColorEnabled,
-                                Param::EchoEnabled, Param::SpaceEnabled, kNoParam, kNoParam } },
+                                Param::EchoEnabled, Param::SpaceEnabled, Param::VoiceRegister, kNoParam } },
 } };
 
 // Version of the saved-state schema. Bump it when the meaning of a stored value
