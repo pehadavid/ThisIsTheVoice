@@ -139,6 +139,10 @@ Installers for Linux, macOS and Windows are attached to the [latest release](htt
 
 In a host that supports CLAP, pick the CLAP version.
 
+### Update notice
+
+When the editor opens, the plugin checks GitHub for a newer build and, if there is one, shows a small "Update available" notice at the bottom right; clicking it opens the download page, and the cross next to it ignores that version. A build from `main` is only offered newer releases; a build from `dev` is only offered a newer development build. The answer is kept for six hours, so opening many editors sends one request. Builds compiled from source never check. The check can be turned off with the gear button (Settings). On Linux and macOS it uses `curl`, or `wget` if `curl` is missing; with neither, nothing happens.
+
 The macOS and Windows files are not signed by an identified developer. On macOS, the install script needs nothing more: it clears the quarantine flag macOS puts on downloaded files. The `.pkg` has to be allowed first in System Settings > Privacy & Security > Open Anyway. On Windows, SmartScreen shows More info, then Run anyway.
 
 ## Build from source

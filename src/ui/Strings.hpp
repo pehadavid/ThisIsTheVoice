@@ -17,7 +17,8 @@ enum class Language { English, French };
 enum class Text { TempoFallback, TempoHost, SettingsHelp, AutoLevelHelp, AutoLevelUndoHelp, PresetHelp,
                   UserPresetsHeader, SavePreset, PresetNamePlaceholder, SavePresetHelp, SavePresetReplaceHelp,
                   DeletePresetConfirm, DeletePresetHelp, AboutHelp, AboutBy, AboutFree, AboutLicence,
-                  AboutBuiltWith, AboutClose, SettingsTitle, SettingsLanguage, SettingsClose, Count };
+                  AboutBuiltWith, AboutClose, SettingsTitle, SettingsLanguage, SettingsClose, UpdateAvailable, UpdateHelp, UpdateDismissHelp,
+                  SettingsUpdates, Count };
 
 inline constexpr std::array<const char*, kParamCount> kHelpFrench = { {
     "Bypass : sortie directe du signal d'origine, sans traitement.", // global_bypass
@@ -79,6 +80,10 @@ inline constexpr std::array<const char*, static_cast<std::size_t>(Text::Count)> 
     "SETTINGS",
     "Language",
     "Click outside the panel or press Esc to close.",
+    "Update available: %s",
+    "A newer version is available: click to open its download page.",
+    "Ignore this version: the next one will be announced again.",
+    "Check for updates",
 } };
 
 inline constexpr std::array<const char*, static_cast<std::size_t>(Text::Count)> kTextsFrench = { {
@@ -106,6 +111,10 @@ inline constexpr std::array<const char*, static_cast<std::size_t>(Text::Count)> 
     "RÉGLAGES",
     "Langue",
     "Cliquer hors du panneau ou Échap pour fermer.",
+    "Mise à jour disponible : %s",
+    "Une version plus récente est disponible : cliquer pour ouvrir sa page de téléchargement.",
+    "Ignorer cette version : la suivante sera de nouveau signalée.",
+    "Rechercher les mises à jour",
 } };
 
 inline const char* helpText(Param p, Language lang)
