@@ -1,4 +1,4 @@
-; SPDX-License-Identifier: GPL-3.0-or-later
+; SPDX-License-Identifier: MIT
 ;
 ; Windows installer (Inno Setup 6). Build with:
 ;   iscc /DAppVersion=0.1.0 /DBuildDir=C:\path\to\build packaging\windows\ThisIsTheVoice.iss

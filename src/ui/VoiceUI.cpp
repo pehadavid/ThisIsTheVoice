@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // Editor: five sections between the input and output meters, drawn with NanoVG.
 // Everything is laid out in base units (kWidth x kHeight). The window accepts any
 // size above a minimum; the layout is scaled to fit it, keeping its proportions, and

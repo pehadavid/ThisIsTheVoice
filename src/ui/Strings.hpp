@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 #pragma once
 
 // Editor texts. English is the default; French is a per-user option (see Settings).
@@ -72,8 +72,8 @@ inline constexpr std::array<const char*, static_cast<std::size_t>(Text::Count)> 
     "About: credits and licence.",
     "Created by Pierre-Alain David",
     "Free and open-source software, at no cost.",
-    "Released under the GNU General Public License, version 3 or later: you may use, study, share and "
-    "modify it. It comes with no warranty.",
+    "Released under the MIT License: you may use, study, share and modify it. It comes with no "
+    "warranty.",
     "Built with DPF (ISC, Filipe Coelho), CLAP (MIT), LV2 (ISC), pugl (ISC), NanoVG (zlib) and the DejaVu Sans "
     "font.",
     "Click anywhere to close.",
@@ -103,8 +103,8 @@ inline constexpr std::array<const char*, static_cast<std::size_t>(Text::Count)> 
     "À propos : crédits et licence.",
     "Créé par Pierre-Alain David",
     "Logiciel libre et open source, entièrement gratuit.",
-    "Distribué sous la licence publique générale GNU, version 3 ou ultérieure : vous pouvez l'utiliser, "
-    "l'étudier, le partager et le modifier. Il est fourni sans aucune garantie.",
+    "Distribué sous licence MIT : vous pouvez l'utiliser, l'étudier, le partager et le modifier. Il est "
+    "fourni sans aucune garantie.",
     "Construit avec DPF (ISC, Filipe Coelho), CLAP (MIT), LV2 (ISC), pugl (ISC), NanoVG (zlib) et la police "
     "DejaVu Sans.",
     "Cliquer n'importe où pour fermer.",

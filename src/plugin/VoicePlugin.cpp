@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // DPF adapter: maps the engine's parameter registry, state and audio callback onto
 // DPF, which produces the VST3, CLAP, LV2 and JACK builds.
 

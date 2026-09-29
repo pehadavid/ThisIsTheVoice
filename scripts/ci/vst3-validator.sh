@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 #
 # Builds Steinberg's VST3 validator from the VST3 SDK (MIT licence) and runs it on the
 # VST3 plugin. Only the modules the validator needs are fetched; the editorhost

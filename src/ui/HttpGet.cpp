@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // HTTPS GET without a library to link: WinHTTP on Windows, the system's curl elsewhere
 // (always present on macOS, nearly always on Linux; without it the check just does
 // not happen).

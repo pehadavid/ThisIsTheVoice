@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 #pragma once
 
 #include "DistrhoPlugin.hpp"
@@ -19,7 +19,7 @@ protected:
     const char* getDescription() const override { return "Vocal chain: level, tone, compression, colour, echo and space."; }
     const char* getMaker() const override { return "Peha"; }
     const char* getHomePage() const override { return DISTRHO_PLUGIN_URI; }
-    const char* getLicense() const override { return "GPL-3.0-or-later"; }
+    const char* getLicense() const override { return "MIT"; }
     uint32_t getVersion() const override
     {
         return d_version(TITV_VERSION_MAJOR, TITV_VERSION_MINOR, TITV_VERSION_PATCH);

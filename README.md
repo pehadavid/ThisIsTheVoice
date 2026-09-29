@@ -11,7 +11,7 @@ A complete vocal chain in a single plugin, built for CLAP first.</p>
 
 <p align="center">
   <a href="https://github.com/pehadavid/ThisIsTheVoice/actions/workflows/build.yml"><img src="https://github.com/pehadavid/ThisIsTheVoice/actions/workflows/build.yml/badge.svg" alt="Build status"></a>
-  <img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="GPL-3.0 licence">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT licence">
   <img src="https://img.shields.io/badge/latency-0%20samples-brightgreen" alt="Latency: 0 samples">
   <img src="https://img.shields.io/badge/CLAP-first-orange" alt="CLAP first">
   <img src="https://img.shields.io/badge/also-VST3%20·%20AU%20·%20LV2-lightgrey" alt="Also VST3, AU, LV2">
@@ -192,9 +192,9 @@ The AU format (the only one Logic Pro loads) is built on macOS only. Bundles get
 
 ## License
 
-This Is The Voice is free software, released under the GNU General Public License, version 3 or later: see [LICENSE](LICENSE).
+This Is The Voice is free software, released under the MIT License: see [LICENSE](LICENSE).
 
-It is built with the following third-party components, whose licences are compatible with the GPLv3. Their copyright notices must accompany any distribution.
+It is built with the following third-party components, whose licences are all permissive. Their copyright notices must accompany any distribution.
 
 | Component | Used for | Licence | Copyright |
 | --- | --- | --- | --- |
