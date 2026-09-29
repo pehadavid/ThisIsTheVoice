@@ -44,7 +44,7 @@ private:
         float previousClean = 0.0f;
         float process(float x, float drive) noexcept;
     };
-    double sampleRate_ = 48000.0;
+    double sampleRate_ = kDefaultSampleRate;
     VoiceRegister register_ = VoiceRegister::Neutral;
     Smoother amount_;
     float driveAmount_ = -1.0f, drive_ = 1.0f;
@@ -70,7 +70,7 @@ public:
 private:
     void applyLowEdge() noexcept;
 
-    double sampleRate_ = 48000.0;
+    double sampleRate_ = kDefaultSampleRate;
     VoiceRegister register_ = VoiceRegister::Neutral;
     Smoother amount_;
     bool idle_ = true;
@@ -99,7 +99,7 @@ public:
     void process(float* left, float* right, uint32_t frames) noexcept;
 
 private:
-    double sampleRate_ = 48000.0;
+    double sampleRate_ = kDefaultSampleRate;
     Smoother amount_;
     bool idle_ = true;
     Biquad highPass_, lowPass_;
@@ -125,7 +125,7 @@ public:
     void process(float* left, float* right, uint32_t frames) noexcept;
 
 private:
-    double sampleRate_ = 48000.0;
+    double sampleRate_ = kDefaultSampleRate;
     Smoother amount_;
     std::array<DelayLine, 2> lines_;
     Lfo lfo_;

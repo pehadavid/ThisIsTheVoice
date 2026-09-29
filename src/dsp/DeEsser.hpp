@@ -47,7 +47,7 @@ private:
     void updateGain() noexcept;
     void applyDetector() noexcept;
 
-    double sampleRate_ = 48000.0;
+    double sampleRate_ = kDefaultSampleRate;
     uint32_t countdown_ = 0;
     VoiceRegister register_ = VoiceRegister::Neutral;
     double frequencyHz_ = kFrequencyHz;

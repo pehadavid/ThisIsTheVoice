@@ -55,7 +55,7 @@ private:
 
     float readTap(const DelayLine& line) const noexcept;
 
-    double sampleRate_ = 48000.0;
+    double sampleRate_ = kDefaultSampleRate;
     Smoother send_, feedback_, lofi_, bounce_;
     std::array<DelayLine, 2> lines_;
     std::array<Lofi, 2> lofiFilters_;

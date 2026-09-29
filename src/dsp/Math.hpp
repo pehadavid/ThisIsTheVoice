@@ -7,6 +7,9 @@ namespace titv::dsp {
 
 inline constexpr double kPi = 3.14159265358979323846;
 
+//needed before prepare() is called, to avoid a divide by zero in the first sample of the first block
+inline constexpr double kDefaultSampleRate = 48000.0;
+
 inline float dbToGain(float db) noexcept { return std::pow(10.0f, db / 20.0f); }
 
 inline float gainToDb(float gain, float floorDb = -120.0f) noexcept

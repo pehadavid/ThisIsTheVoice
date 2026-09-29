@@ -149,7 +149,7 @@ double Engine::tailSeconds() const noexcept
 
 uint32_t Engine::tailSamples() const noexcept
 {
-    const double samples = std::ceil(tailSeconds() * (sampleRate_ > 0.0 ? sampleRate_ : 48000.0));
+    const double samples = std::ceil(tailSeconds() * (sampleRate_ > 0.0 ? sampleRate_ : dsp::kDefaultSampleRate));
     return samples >= 4294967294.0 ? 4294967294u : static_cast<uint32_t>(samples);
 }
 

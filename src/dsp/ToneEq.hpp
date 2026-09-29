@@ -69,7 +69,7 @@ private:
     void updateCoefficients() noexcept;
     void applyColorCurve() noexcept;
 
-    double sampleRate_ = 48000.0;
+    double sampleRate_ = kDefaultSampleRate;
     bool tonalColor_ = true;
     VoiceRegister register_ = VoiceRegister::Neutral;
     uint32_t countdown_ = 0;

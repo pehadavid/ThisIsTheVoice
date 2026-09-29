@@ -85,7 +85,7 @@ public:
     }
 
 private:
-    double sampleRate_ = 48000.0;
+    double sampleRate_ = kDefaultSampleRate;
     double increment_ = 0.0;
     double phase_ = 0.0;
 };

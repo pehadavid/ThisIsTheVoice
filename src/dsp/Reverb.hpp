@@ -73,7 +73,7 @@ private:
     };
 
     const Design& design_;
-    double sampleRate_ = 48000.0;
+    double sampleRate_ = kDefaultSampleRate;
 
     DelayLine predelay_;
     uint32_t predelaySamples_ = 0;
