@@ -145,6 +145,8 @@ When the editor opens, the plugin checks GitHub for a newer build and, if there 
 
 The macOS and Windows files are not signed by an identified developer. On macOS, the install script needs nothing more: it clears the quarantine flag macOS puts on downloaded files. The `.pkg` has to be allowed first in System Settings > Privacy & Security > Open Anyway. On Windows, SmartScreen shows More info, then Run anyway.
 
+Yes, your OS will warn you. Apple and Microsoft each want a yearly fee for the privilege of not being treated as a suspect, and this is a free plugin released under the MIT licence: it will not pay a toll to be allowed to run on your own computer. The whole source is here, the builds come from public CI, and you are welcome to compile it yourself if you trust a padlock more than a repository.
+
 ## Build from source
 
 To build the plugin yourself. The engine and its tests also build alone, without DPF or any graphics dependency: `cmake -S . -B build -DTITV_BUILD_PLUGIN=OFF`.
