@@ -10,7 +10,7 @@ endif()
 # Base version: releases start here. CI publishes the next patch after the latest
 # release tag (scripts/ci/version.sh) and passes it in TITV_VERSION; raise the base
 # for a new minor or major version.
-set(TITV_BASE_VERSION 0.9.0)
+set(TITV_BASE_VERSION 1.0.0)
 set(TITV_VERSION "" CACHE STRING "Version to build (default: TITV_BASE_VERSION)")
 # Full version shown in the editor, e.g. 0.9.1-dev.42 for a development build.
 set(TITV_VERSION_LABEL "" CACHE STRING "Version shown in the editor (default: the version built)")
